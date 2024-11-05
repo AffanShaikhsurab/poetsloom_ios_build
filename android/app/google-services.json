@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "447279222567",
+    "project_id": "poetloom",
+    "storage_bucket": "poetloom.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:447279222567:android:979fbe9eb6022c0d9b2302",
+        "android_client_info": {
+          "package_name": "affan.poetloom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBlrkJUKKR2SkjRptFcViwtR9nqJDQ3nCE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
