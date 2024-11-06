@@ -68,6 +68,7 @@ class AuthCubit extends Cubit<AuthState> {
         username: username,
         password: password,
         author_name: author_name
+        
       );
       final user = _authService.currentUser;
       if (user != null) {

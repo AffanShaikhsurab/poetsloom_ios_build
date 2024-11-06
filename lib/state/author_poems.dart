@@ -117,7 +117,11 @@ class AuthorPoemsCubit extends Cubit<AuthorPoemsState> {
 
          final poem_content = content!["content"] as String;
           final poem_title = content!["title"] as String;
-          return Poem(
+          var rewards = 0;
+
+          if(content["rewards"] != null){
+              rewards = content!["rewards"] as int ?? 0;
+          }         return Poem(
             id: poemData[5]?.toString() ?? 'unknown',
             title: poem_title  ?? 'Untitled',
             content: poem_content ?? "Error: No content to display",
@@ -128,7 +132,7 @@ class AuthorPoemsCubit extends Cubit<AuthorPoemsState> {
             poemHash: poemData[1]?.toString() ?? 'unknown',
             authorAvatar: avatarUrl,
             likes: likes?? 0,
-            rewards: 0,
+            rewards: rewards,
             isLiked:  false,
             createdAt: date,
             liked: poemData[7] == 0 ? [BigInt.from(0)] : (poemData[7] as List).cast<BigInt>(),

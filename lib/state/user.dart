@@ -109,4 +109,6 @@ class WithdrawCubit extends Cubit<WithdrawState> {
       emit(WithdrawFailure(e.toString()));
     }
   }
+
+ 
 }

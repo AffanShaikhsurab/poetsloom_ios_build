@@ -133,7 +133,6 @@ class PoetryCubit extends Cubit<PoetryState> {
     }
   }
 
-  
   Future<void> getAuthorPoems() async {
     if (state.status == PoetryStatus.loading) return;
 
@@ -178,8 +177,11 @@ class PoetryCubit extends Cubit<PoetryState> {
           final isLiked = await _poetsLoomService.isLikedPoem(poemData[5]);
  final poem_content = content!["content"] as String;
           final poem_title = content!["title"] as String;
-          print("poem title is $poem_title");
-          return Poem(
+          var rewards = 0;
+
+          if(content["rewards"] != null){
+              rewards = content!["rewards"] as int ?? 0;
+          }         return Poem(
             id: poemData[5]?.toString() ?? 'unknown',
             title: poem_title  ?? 'Untitled',
             content: poem_content ?? "Error: No content to display",
@@ -190,7 +192,7 @@ class PoetryCubit extends Cubit<PoetryState> {
             poemHash: poemData[1]?.toString() ?? 'unknown',
             authorAvatar: avatarUrl,
             likes: likes?? 0,
-            rewards: 0,
+            rewards: rewards,
             isLiked:  false,
             createdAt: date,
             liked: poemData[7] == 0 ? [BigInt.from(0)] : (poemData[7] as List).cast<BigInt>(),
@@ -306,7 +308,9 @@ Future<void> addFollower(Poem poem) async {
     try {
       await _poetsLoomService.rewardPoem(
         BigInt.from(int.parse(poem.id)),
-        amount,
+        amount,poem.authorId
+        ,poem.poemHash
+        ,poem.rewards + 1
       );
       
       final updatedPoem = poem.copyWith(rewards: poem.rewards + 1);
@@ -432,6 +436,10 @@ Future<void> addFollower(Poem poem) async {
   //     ));
   //   }
   // }
+
+
+
+
 Future<List<Poem>?> getFollowedPoems() async {
   final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
   final _prefs = await SharedPreferences.getInstance();
@@ -459,8 +467,8 @@ Future<List<Poem>?> getFollowedPoems() async {
             if(authorIds.contains( poemData.authorId)){
               return poemData;
             }
-        }),
-      );
+        })
+    );
       print("you followed poems are $followedPoems");
 
   // Flatten the list of lists
@@ -507,6 +515,11 @@ Future<List<Poem>> _fetchAndTransformPoems() async {
           final _isLiked = await _poetsLoomService.isLikedPoem(poemData[5]);
           final poem_content = content!["content"] as String;
           final poem_title = content!["title"] as String;
+                    var rewards = 0;
+
+          if(content["rewards"] != null){
+              rewards = content!["rewards"] as int ?? 0;
+          }
           print("Is liked is $_isLiked");
          return Poem(
             id: poemData[5]?.toString() ?? 'unknown',
@@ -519,7 +532,7 @@ Future<List<Poem>> _fetchAndTransformPoems() async {
             poemHash: poemData[1]?.toString() ?? 'unknown',
             authorAvatar: avatarUrl,
             likes: likes?? 0,
-            rewards: 0,
+            rewards: rewards,
             isLiked:  false,
             createdAt: date,
             liked: poemData[7] == 0 ? [BigInt.from(0)] : (poemData[7] as List).cast<BigInt>(),

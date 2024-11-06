@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart' as db;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:test_app/model.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -49,6 +50,7 @@ Future<String?> uploadPoemWithHashedKey(String title, String content) async {
       'author': username,
       'createdAt': db.ServerValue.timestamp, // Use server timestamp
     'likes' : 0,
+    'rewards' : 0,
     };
 
     try {
@@ -212,6 +214,58 @@ bool validatePoemData(String title, String content) {
 }
 
 
+Future<String> addComment(int poemId, String comment) async {
+
+final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+  try{
+  final _prefs = await SharedPreferences.getInstance();
+  final id = json.decode(_prefs.getString("user_data")!)["id"];
+
+await supabaseClient.from("comments").insert({
+  'userId' : id,
+  'poemId' : poemId,
+  'comment' : comment,
+      'timestamp': DateTime.now().toIso8601String(), // Convert DateTime to ISO 8601 string
+});
+
+return "success";
+  }catch(e){
+    print(e);
+    throw Exception("Unable to add comment ${e}");
+  }
+
+
+}
+
+
+Future<List<Comment>> getComments(int poemId) async {
+
+final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+  try{
+
+final result = await supabaseClient.from("comments").select("*").eq("poemId", poemId);
+
+List<Comment> comments = [];
+
+for (var comment in result) {
+  final userName  = await supabaseClient.from("users").select("*").eq("id", comment["userId"]).single();
+comments.add(
+  Comment(
+    id: poemId.toString(),
+    content: comment["comment"],
+    timestamp: DateTime.parse(comment["timestamp"]), // Convert string to DateTime
+    author: userName["author_name"],
+  ),
+);}
+print("the commetns are : ${comments}");
+return comments;
+  }catch(e){
+    print(e);
+    throw Exception("Unable to add comment ${e}");
+  }
+
+
+}
 Future<Map?> retrievePoemContent(String hashKey) async {
   try {
     // Create a reference to the Realtime Database
@@ -271,6 +325,7 @@ String generateHashKey(String username, String title, int timestamp) {
 }
 
   Future<void> _initialize() async {
+    
     // Load contract ABI
     _contract = DeployedContract(
       ContractAbi.fromJson(_abiJson, 'PoetsLoom'),
@@ -470,12 +525,13 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
     //   throw Exception('Failed to like poem: ${e.toString()}');
     // }
   // Fixed reward poem function
-  Future<String> rewardPoem(BigInt poemId, BigInt amount) async {
+  Future<String> rewardPoem(BigInt poemId, BigInt amount , int authorId , String poemHash , int reward )async {
     final function = _contract.function('rewardPoem');
-    print("poemId is ${poemId}");
+    print("poemId is ${poemId} with reward ${amount}");
     try {
       // Convert amount to Wei if it's not already
-      final weiAmount = EtherAmount.fromBigInt(EtherUnit.wei, BigInt.from(1000000));
+
+      final weiAmount = EtherAmount.fromBigInt(EtherUnit.wei, amount);
       
       // Add gas limit and proper value handling
       final result = await _client.sendTransaction(
@@ -493,15 +549,61 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
       // Wait for transaction receipt to confirm
   
       print(result.toString());
-      if (result == null) {
+      if (result.isEmpty) {
         throw Exception('Transaction failed: No receipt received');
       }
       
+
+              final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+
+          final _prefs = await SharedPreferences.getInstance();
+          final id = await json.decode(_prefs.getString("user_data")!)["id"];
+
+          final res = await supabaseClient.from("rewards")
+            .insert({"userId":int.parse(id), "authorId": authorId, "amount": amount.toDouble()});
+          
+          if (res.toString().isEmpty) {
+            throw Exception('Failed to reward poem: ${res}');
+          }
+          
+      await db.FirebaseDatabase.instance
+          .ref()
+          .child('poems')
+          .child(poemHash)
+          .child("rewards").set(reward);
+
+
       return result;
     } catch (e) {
       print('Error in rewardPoem: ${e.toString()}');
       throw Exception('Failed to reward poem: ${e.toString()}');
     }
+  }
+
+
+  Future<List<double>> getRewards() async {
+     final _prefs = await SharedPreferences.getInstance();
+          final id = await json.decode(_prefs.getString("user_data")!)["id"];
+              final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+          print("fetching rewards");
+          final result = await supabaseClient
+          .from("rewards")
+          .select("*")
+          .eq("authorId", int.parse(id));
+
+          if (result.isEmpty) {
+            throw Exception('Failed to get rewards: ${result}');
+          } 
+        print(" the rewards are ${result}");
+          List<double> rewards = [];
+          for (var reward in result) {
+             final weiAmount = EtherAmount.fromBigInt(EtherUnit.wei, BigInt.from(reward['amount']));
+  final ethAmount = weiAmount.getValueInUnit(EtherUnit.ether); // Converts wei to ETH
+            rewards.add(ethAmount);
+          }
+          print(" the rewards in the eht are ${rewards}");
+          return rewards;
+
   }
   // Withdraw rewards
   Future<String> withdrawAmount() async {

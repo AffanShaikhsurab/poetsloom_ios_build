@@ -174,3 +174,18 @@ class User {
     );
   }
 }
+class Comment {
+  final String id;
+  final String author;
+  final String content;
+  final DateTime timestamp;
+
+  Comment({
+    required this.id,
+    required this.author,
+    required this.content,
+    required this.timestamp,
+  });
+
+  // Add toJson and fromJson methods if needed
+}

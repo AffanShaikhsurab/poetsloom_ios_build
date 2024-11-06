@@ -129,6 +129,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.6"
+  cryptography:
+    dependency: transitive
+    description:
+      name: cryptography
+      sha256: d146b76d33d94548cf035233fbc2f4338c1242fa119013bead807d033fc4ae05
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.7.0"
   eip1559:
     dependency: transitive
     description:
@@ -324,10 +332,18 @@ packages:
     dependency: transitive
     description:
       name: js
-      sha256: c1b2e9b5ea78c45e1a0788d29606ba27dc5f71f019f32ca5140f61ef071838cf
+      sha256: f2c445dce49627136094980615a031419f7f3eb393237e4ecd97ac15dea343f3
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.1"
+    version: "0.6.7"
+  json_annotation:
+    dependency: transitive
+    description:
+      name: json_annotation
+      sha256: "1ce844379ca14835a50d2f019a3099f419082cfdd231cd86a142af94dd5c6bb1"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.9.0"
   json_rpc_2:
     dependency: transitive
     description:
@@ -821,6 +837,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.13"
+  walletconnect_dart:
+    dependency: "direct main"
+    description:
+      name: walletconnect_dart
+      sha256: "6d69d3f7ed43b4a111458da0ba078f4ea291ff11328068c9cbf5cab3bd86593f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.11"
   web:
     dependency: transitive
     description:
@@ -837,22 +861,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.6.1"
-  web_socket:
-    dependency: transitive
-    description:
-      name: web_socket
-      sha256: "3c12d96c0c9a4eec095246debcea7b86c0324f22df69893d538fcc6f1b8cce83"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.6"
   web_socket_channel:
     dependency: transitive
     description:
       name: web_socket_channel
-      sha256: "9f187088ed104edd8662ca07af4b124465893caf063ba29758f97af57e61da8f"
+      sha256: d88238e5eac9a42bb43ca4e721edba3c08c6354d4a53063afaa568516217621b
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.1"
+    version: "2.4.0"
   xdg_directories:
     dependency: transitive
     description:

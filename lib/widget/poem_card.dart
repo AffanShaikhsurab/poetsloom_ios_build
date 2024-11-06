@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:test_app/model.dart';
+import 'package:test_app/screens/poem_detial.dart';
 
 class AnimatedPoemCard extends StatefulWidget {
   final Poem poem;
@@ -179,7 +180,13 @@ class _AnimatedPoemCardState extends State<AnimatedPoemCard>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     
-    return AnimatedContainer(
+    return 
+    
+    GestureDetector(
+
+
+      child:
+    AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -194,7 +201,9 @@ class _AnimatedPoemCardState extends State<AnimatedPoemCard>
           ),
         ],
       ),
-      child: Column(
+      child: 
+     
+      Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ListTile(
@@ -329,6 +338,14 @@ class _AnimatedPoemCardState extends State<AnimatedPoemCard>
           ),
         ],
       ),
+    ),
+    onTap: (){
+Navigator.of(context).push(
+  MaterialPageRoute(
+    builder: (context) => PoemDetailScreen(poem: widget.poem),
+  ),
+);
+    },
     );
   }
 
@@ -348,11 +365,22 @@ class RewardBottomSheet extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _RewardBottomSheetState createState() => _RewardBottomSheetState();
+  RewardBottomSheetState createState() => RewardBottomSheetState();
 }
+class RewardBottomSheetState extends State<RewardBottomSheet> {
+  // Starting with 0.0005 ETH as minimum
+  double _value = 0.0005;
 
-class _RewardBottomSheetState extends State<RewardBottomSheet> {
-  double _value = 1.0;
+  String _formatEthValue(double value) {
+    // Format with appropriate decimal places based on value size
+    if (value < 0.001) {
+      return value.toStringAsFixed(4);
+    } else if (value < 0.01) {
+      return value.toStringAsFixed(3);
+    } else {
+      return value.toStringAsFixed(2);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -382,20 +410,21 @@ class _RewardBottomSheetState extends State<RewardBottomSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.star, color: Colors.amber, size: 32),
+              const Icon(Icons.attach_money, color: Colors.amber, size: 32),
               const SizedBox(width: 8),
               Text(
-                _value.toStringAsFixed(1),
+                '${_formatEthValue(_value)} ETH',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
             ],
           ),
           Slider(
             value: _value,
-            min: 0.1,
-            max: 10.0,
-            divisions: 99,
-            label: _value.toStringAsFixed(1),
+            min: 0.0005, // Minimum 0.0005 ETH
+            max: 1.0,    // Maximum 1 ETH
+            // Using more divisions for finer control
+            divisions: 1999, // This gives steps of 0.0005 ETH
+            label: '${_formatEthValue(_value)} ETH',
             onChanged: (value) => setState(() => _value = value),
           ),
           const SizedBox(height: 16),
@@ -412,7 +441,8 @@ class _RewardBottomSheetState extends State<RewardBottomSheet> {
                 child: FilledButton(
                   onPressed: () => Navigator.pop(
                     context,
-                    BigInt.from(_value * 1e18.toInt()),
+                    // Convert ETH to Wei (1 ETH = 10^18 Wei)
+                    BigInt.from(_value *1e18)
                   ),
                   child: const Text('Send Reward'),
                 ),

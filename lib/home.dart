@@ -56,12 +56,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         return state.forYouPoems;
       case 1:
         return state.followingPoems;
-      case 2:
-        return state.trendingPoems;
-      case 3:
-        return state.newPoems;
-      case 4:
-        return state.followingPoems;
       default:
         return [];
     }
@@ -136,9 +130,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           tabs: const [
             Tab(text: 'For You'),
             Tab(text: 'Following'),
-            Tab(text: 'Trending'),
-            Tab(text: 'New'),
-            Tab(text: 'Followed'),
+            
           ],
         ),
       ),
