@@ -8,11 +8,14 @@ import 'package:test_app/authservice.dart';
 import 'package:test_app/firebase_options.dart';
 import 'package:test_app/home.dart';
 import 'package:test_app/login_screen.dart';
+import 'package:test_app/onboarding/onboarding.dart';
+import 'package:test_app/screens/explore_screen.dart';
 import 'package:test_app/screens/mnemonic_scrren.dart';
 import 'package:test_app/services/contract.dart';
 import 'package:test_app/services/mnemonic.dart';
 import 'package:test_app/state/auth_state.dart';
 import 'package:test_app/state/author_poems.dart';
+import 'package:test_app/state/fav_state.dart';
 import 'package:test_app/state/mnemonic_state.dart';
 import 'package:test_app/state/poems.dart';
 import 'package:test_app/state/rewards.dart';
@@ -21,6 +24,7 @@ import 'package:test_app/state/user.dart';
 
 void main() async{
    WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -38,7 +42,7 @@ void main() async{
       ),
       child:
       MultiBlocProvider(providers: [
-
+  
       BlocProvider(create: (_) => PoetryCubit(poetsLoomService: PoetsLoomService(
         rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/bTJkxdz694BiZKrP7qINHw7NQUrpnd75',
         contractAddress: '0xF0F5234959166Cc8D2Ee9F4C4e029cdbdac93266',
@@ -46,7 +50,17 @@ void main() async{
 
       ))),
 
+BlocProvider(
+  create: (context) => PoetryCubit(
+    poetsLoomService: PoetsLoomService(
+        rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/bTJkxdz694BiZKrP7qINHw7NQUrpnd75',
+        contractAddress: '0xF0F5234959166Cc8D2Ee9F4C4e029cdbdac93266',
+        privateKey: "dc50e7d15fc7a35ed046e5d2c5151da2bb9a9fd427b2b00ba7db891dd11d0070"
 
+      ),
+  )..loadInitialPoems(0), // Load initial poems
+  child: ExploreScreen(),
+),
       
       BlocProvider(create: (_) => MnemonicCubit(
         MnemonicService( baseUrl: "https://poetsloom-mnemonic.onrender.com")
@@ -80,7 +94,18 @@ void main() async{
         contractAddress: '0xF0F5234959166Cc8D2Ee9F4C4e029cdbdac93266',
         privateKey: "dc50e7d15fc7a35ed046e5d2c5151da2bb9a9fd427b2b00ba7db891dd11d0070"
 
-      )))
+      ))),
+        BlocProvider(
+      create: (context) => FavoritePoemsCubit(
+        poetsLoomService: PoetsLoomService(
+               rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/bTJkxdz694BiZKrP7qINHw7NQUrpnd75',
+        contractAddress: '0xF0F5234959166Cc8D2Ee9F4C4e029cdbdac93266',
+        privateKey: "dc50e7d15fc7a35ed046e5d2c5151da2bb9a9fd427b2b00ba7db891dd11d0070"
+
+      ),
+        poetryCubit: context.read<PoetryCubit>(),
+      ),
+    ),
 
       ],
 
@@ -101,7 +126,7 @@ class MyApp extends StatelessWidget {
       ),
       home: Consumer<AuthService>(
         builder: (context, auth, _) {
-          return auth.isAuthenticated ? HomeScreen() : PrivateKeyInputScreen();
+          return auth.isAuthenticated ? HomeScreen() : OnboardingScreen();
         },
       ),
     );

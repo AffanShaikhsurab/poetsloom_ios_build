@@ -1,11 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test_app/services/mnemonic.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path/path.dart' as path;
 
 class AuthService with ChangeNotifier {
   final SupabaseClient _supabase;
@@ -124,12 +128,15 @@ class AuthService with ChangeNotifier {
       if (!verifyPassword(storedEncryptedPassword, password, privateAddress["key"])) {
         throw AuthException('Invalid credentials');
       }
+     
 
       // Create user object
       final user = User(
         id: response['id'].toString(),
         username: response['username'],
- 
+        author_name: response['author_name'],
+        profile: response['profile'],
+
       );
 
       await _saveAuthData('mock_token', user);
@@ -138,40 +145,87 @@ class AuthService with ChangeNotifier {
     }
   }
 
-  Future<void> signup({
-    required String username,
-    required String password,
-    required String author_name
-  }) async {
-    try {
-      // Encrypt password with user's public address
-      final encryptedPassword = encryptPassword(password);
+  
 
-      // Insert user into Supabase
-      final response = await _supabase
+
+Future<String> signup({
+  required String username,
+  required String password,
+  required String author_name,
+  required Uint8List profileImage,
+  required String filePath,
+}) async {
+  try {
+    final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+
+    // Encrypt password with user's public address
+    final encryptedPassword = encryptPassword(password);
+
+    print("uploading profile image...");
+
+    // Create a unique file name using timestamp
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final extension = path.extension(filePath);
+    final fileName = 'profile_$timestamp$extension';
+
+    // Upload image to Supabase Storage
+    final storageResponse = await supabaseClient
+        .storage
+        .from('user_profile') // Your bucket name
+        .uploadBinary(
+          fileName,
+          profileImage,
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: true,
+          ),
+        );
+
+    if (storageResponse.isEmpty) {
+      throw Exception('Failed to upload image: ${storageResponse.toString()}');
+    }
+
+    // Get the public URL of the uploaded image
+    final imageUrl = await supabaseClient
+        .storage
+        .from('user_profile')
+        .createSignedUrl(fileName , 10000000000);
+
+    print("Profile image uploaded successfully: $imageUrl");
+
+    // Insert user into Supabase
+    final response = await supabaseClient
         .from('users')
         .insert({
           'username': username.toLowerCase(),
-       'password': encryptedPassword,
-       'author_name' : author_name,
+          'password': encryptedPassword,
+          'author_name': author_name,
+          'profile': imageUrl,
         })
         .select()
         .single();
 
-      // Create user object
-      final user = User(
-        id: response['id'].toString(),
-        username: username,
-      );
 
-      await _saveAuthData('mock_token', user);
-    } catch (error) {
-      throw AuthException('Signup failed: ${error.toString()}');
-    }
+    // Create user object
+    final user = User(
+      id: response['id'].toString(),
+      username: username,
+      author_name: author_name,
+      profile: imageUrl,
+
+    );
+
+    await _saveAuthData('mock_token', user);
+    return imageUrl;
+    
+  } catch (error) {
+    print("Error during signup: $error");
+    throw AuthException('Signup failed: ${error.toString()}');
   }
-
+}
   Future<void> logout() async {
     await _clearAuthData();
+  
   }
 }
 
@@ -186,11 +240,17 @@ class AuthException implements Exception {
 class User {
   final String id;
   final String username;
+  final String author_name;
+  final String profile;
+
 
 
   User({
     required this.id,
     required this.username,
+    required this.author_name,
+    required this.profile,
+
 
   });
 
@@ -198,6 +258,9 @@ class User {
     return User(
       id: json['id'],
       username: json['username'],
+      author_name: json['author_name'],
+      profile: json['profile'],
+     
 
     );
   }
@@ -206,6 +269,9 @@ class User {
     return {
       'id': id,
       'username': username,
+      'author_name': author_name,
+      'profile': profile,
+
 
     };
   }

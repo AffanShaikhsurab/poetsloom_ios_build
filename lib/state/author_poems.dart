@@ -111,7 +111,7 @@ class AuthorPoemsCubit extends Cubit<AuthorPoemsState> {
         try {
           final date = _convertBlockchainTimestamp(poemData[4]);
           final content = await _poetsLoomService.retrievePoemContent(poemData[1]);
-          final avatarUrl = 'https://api.dicebear.com/7.x/avataaars/svg?seed=${poemData[2]}';
+            final avatarUrl = await _poetsLoomService.getProfile(int.parse(poemData[3]!.toString()));
                             final likes = await _poetsLoomService.retrieveLikes( poemData[1]);
 
 
@@ -121,7 +121,10 @@ class AuthorPoemsCubit extends Cubit<AuthorPoemsState> {
 
           if(content["rewards"] != null){
               rewards = content!["rewards"] as int ?? 0;
-          }         return Poem(
+          }      
+                    List<String> poem_tags  = content["tags"]  == null ? []  as List<String> : (content["tags"] as List).cast<String>();
+
+          return Poem(
             id: poemData[5]?.toString() ?? 'unknown',
             title: poem_title  ?? 'Untitled',
             content: poem_content ?? "Error: No content to display",
@@ -133,6 +136,7 @@ class AuthorPoemsCubit extends Cubit<AuthorPoemsState> {
             authorAvatar: avatarUrl,
             likes: likes?? 0,
             rewards: rewards,
+  tags: poem_tags,
             isLiked:  false,
             createdAt: date,
             liked: poemData[7] == 0 ? [BigInt.from(0)] : (poemData[7] as List).cast<BigInt>(),

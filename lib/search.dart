@@ -11,139 +11,221 @@ import 'package:test_app/model.dart';
 import 'package:test_app/profile_screen.dart';
 import 'package:test_app/model.dart';
 import 'package:test_app/widget/poem_card.dart';
-
 class PoemSearchDelegate extends SearchDelegate<Poem?> {
+  final List<Poem> poems;
+  static const backgroundColor = Color(0xFF000000);
+  static const cardColor = Color(0xFF1E1E1E);
+  static const accentColor = Color(0xFF6C63FF);
+
+  PoemSearchDelegate(this.poems) {
+    // Override the default theme
+  
+  }
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    return ThemeData.dark().copyWith(
+      scaffoldBackgroundColor: backgroundColor,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: backgroundColor,
+        elevation: 0,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: InputBorder.none,
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+      ),
+    );
+  }
+
   @override
   List<Widget> buildActions(BuildContext context) {
     return [
-      if (query.isNotEmpty)
-        IconButton(
-          icon: Icon(Icons.clear),
+      AnimatedOpacity(
+        opacity: query.isNotEmpty ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        child: IconButton(
+          icon: const Icon(Icons.clear),
           onPressed: () {
             query = '';
             showSuggestions(context);
           },
         ),
+      ),
     ];
   }
 
   @override
   Widget buildLeading(BuildContext context) {
     return IconButton(
-      icon: Icon(Icons.arrow_back),
+      icon: const Icon(Icons.arrow_back),
       onPressed: () => close(context, null),
     );
   }
 
   @override
   Widget buildResults(BuildContext context) {
-    return FutureBuilder<List<Poem>>(
-      future: _searchPoems(query),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 48, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('Error searching poems'),
-                SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    showResults(context);
-                  },
-                  child: Text('Try Again'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final poems = snapshot.data ?? [];
-        if (poems.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.search_off, size: 48, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No poems found for "$query"'),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: poems.length,
-          itemBuilder: (context, index) {
-            return AnimatedPoemCard(
-              poem: poems[index],
-              onLike: () async {
-    await Future.value();
-              },
-              onReward: (amount) async {
-    await Future.value();
-
-              },
-              onFollow: () async {
-    await Future.value();
-
-
-              },
-            );
-          },
-        );
-      },
-    );
+    return _buildSearchResults();
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    return const Center(
+    return _buildSearchResults();
+  }
+
+  Widget _buildSearchResults() {
+    final filteredPoems = poems.where((poem) {
+      final lowercaseQuery = query.toLowerCase();
+      return poem.title.toLowerCase().contains(lowercaseQuery) ||
+          poem.content.toLowerCase().contains(lowercaseQuery) ||
+          poem.authorName.toLowerCase().contains(lowercaseQuery) ||
+          poem.tags.any((tag) => tag.toLowerCase().contains(lowercaseQuery));
+    }).toList();
+
+    if (query.isEmpty) {
+      return _buildRecentSearches();
+    }
+
+    if (filteredPoems.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 64,
+              color: Colors.white.withOpacity(0.4),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No results found for "$query"',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: filteredPoems.length,
+      itemBuilder: (context, index) {
+        final poem = filteredPoems[index];
+        return _buildSearchResultCard(context, poem);
+      },
+    );
+  }
+
+  Widget _buildSearchResultCard(BuildContext context, Poem poem) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => close(context, poem),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundImage: NetworkImage(poem.authorAvatar),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            poem.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'by ${poem.authorName}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.6),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (poem.tags.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 4,
+                    children: poem.tags.take(3).map((tag) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: accentColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '#$tag',
+                          style: TextStyle(
+                            color: accentColor.withOpacity(0.9),
+                            fontSize: 12,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentSearches() {
+    // You can implement recent searches functionality here
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search, size: 48, color: Colors.grey),
-          SizedBox(height: 16),
+          Icon(
+            Icons.search_rounded,
+            size: 64,
+            color: Colors.white.withOpacity(0.4),
+          ),
+          const SizedBox(height: 16),
           Text(
-            'Search for poems by title, content, or author',
-            style: TextStyle(color: Colors.grey),
+            'Search for poems, tags, or poets',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 16,
+            ),
           ),
         ],
       ),
     );
   }
-
-  Future<List<Poem>> _searchPoems(String query) async {
-    await Future.delayed(Duration(milliseconds: 500));
-    
-    return List.generate(
-      5,
-      (index) => Poem(
-        id: 'search_${DateTime.now().millisecondsSinceEpoch}_$index',
-        title: 'Search Result Poem $index',
-        content: 'This is a poem that matches your search query "$query"...',
-        authorId: index,
-        authorAddress: "0x0000000000000000000000000000000000000000",
-        authorName: 'Poet $index',
-        authorUsername: 'poet$index',
-        authorAvatar: 'https://via.placeholder.com/150',
-        likes: index * 10,
-        rewards: index * 2,
-        poemHash: index.toString(),
-        isLiked: false,
-        createdAt: DateTime.now().subtract(Duration(days: index)),
-        liked: [],
-      ),
-    );
-  }
 }
-
 class CustomSnackBar extends StatelessWidget {
   final String message;
   final IconData? icon;

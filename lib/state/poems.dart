@@ -133,6 +133,10 @@ class PoetryCubit extends Cubit<PoetryState> {
     }
   }
 
+
+
+
+
   Future<void> getAuthorPoems() async {
     if (state.status == PoetryStatus.loading) return;
 
@@ -168,7 +172,7 @@ class PoetryCubit extends Cubit<PoetryState> {
           try {
             final date = convertBlockchainTimestamp(poemData[4]);
             final content = await _poetsLoomService.retrievePoemContent(poemData[1]);
-            final avatarUrl = 'https://api.dicebear.com/7.x/avataaars/svg?seed=${poemData[2]}';
+            final avatarUrl = await _poetsLoomService.getProfile(int.parse(poemData[3]!.toString()));
                       final likes = await _poetsLoomService.retrieveLikes( poemData[1]);
 
             print("Liked Users are ${poemData[7].toString()}");
@@ -179,9 +183,13 @@ class PoetryCubit extends Cubit<PoetryState> {
           final poem_title = content!["title"] as String;
           var rewards = 0;
 
+          
           if(content["rewards"] != null){
               rewards = content!["rewards"] as int ?? 0;
-          }         return Poem(
+          }          
+                    List<String> poem_tags  = content["tags"]  == null ? []  as List<String> : (content["tags"] as List).cast<String>();
+
+         return Poem(
             id: poemData[5]?.toString() ?? 'unknown',
             title: poem_title  ?? 'Untitled',
             content: poem_content ?? "Error: No content to display",
@@ -193,7 +201,8 @@ class PoetryCubit extends Cubit<PoetryState> {
             authorAvatar: avatarUrl,
             likes: likes?? 0,
             rewards: rewards,
-            isLiked:  false,
+  tags: poem_tags,
+            isLiked:  isLiked,
             createdAt: date,
             liked: poemData[7] == 0 ? [BigInt.from(0)] : (poemData[7] as List).cast<BigInt>(),
           );
@@ -438,7 +447,25 @@ Future<void> addFollower(Poem poem) async {
   // }
 
 
+Future<bool> addToFavorites(Poem poem) async {
+  try {
+    await _poetsLoomService.addFavorite(int.parse(poem.id));
+    return true;
+  } catch (e) {
+    print("Error adding poem to favorites: $e");
+    return false;
+  }
+}
 
+Future<bool> removeFormFavorites(Poem poem) async {
+  try {
+    await _poetsLoomService.removeFromFavorites(int.parse(poem.id));
+    return true;
+  } catch (e) {
+    print("Error adding poem to favorites: $e");
+    return false;
+  }
+}
 
 Future<List<Poem>?> getFollowedPoems() async {
   final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
@@ -508,7 +535,7 @@ Future<List<Poem>> _fetchAndTransformPoems() async {
           final content = await _poetsLoomService.retrievePoemContent(poemData[1]);
           final likes = await _poetsLoomService.retrieveLikes( poemData[1]);
           // Create avatar URL using author ID for uniqueness
-          final avatarUrl = 'https://api.dicebear.com/7.x/avataaars/svg?seed=${poemData[2]}';
+            final avatarUrl = await _poetsLoomService.getProfile(int.parse(poemData[3]!.toString()));
           print("Liked Users are ${poemData[7].toString()}");
           print("Author Name is ${poemData[8].toString()}");
           print("Poem likes are ${poemData[6].toString()}");
@@ -521,6 +548,9 @@ Future<List<Poem>> _fetchAndTransformPoems() async {
               rewards = content!["rewards"] as int ?? 0;
           }
           print("Is liked is $_isLiked");
+
+                    List<String> poem_tags  = content["tags"]  == null ? []  as List<String> : (content["tags"] as List).cast<String>();
+
          return Poem(
             id: poemData[5]?.toString() ?? 'unknown',
             title: poem_title  ?? 'Untitled',
@@ -533,7 +563,8 @@ Future<List<Poem>> _fetchAndTransformPoems() async {
             authorAvatar: avatarUrl,
             likes: likes?? 0,
             rewards: rewards,
-            isLiked:  false,
+  tags: poem_tags,
+            isLiked:  _isLiked,
             createdAt: date,
             liked: poemData[7] == 0 ? [BigInt.from(0)] : (poemData[7] as List).cast<BigInt>(),
           );

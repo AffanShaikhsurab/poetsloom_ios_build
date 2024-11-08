@@ -1,5 +1,6 @@
 // rewards_state.dart
 import 'package:equatable/equatable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test_app/state/rewards.dart';
 import 'package:web3dart/web3dart.dart';
 // rewards_cubit.dart
@@ -252,12 +253,25 @@ class _RewardsScreenState extends State<RewardsScreen> {
     );
   }
 
+Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    // Add any additional logout logic here, such as clearing tokens or session data
+    Navigator.of(context).pushReplacementNamed('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Rewards'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () => context.read<RewardsCubit>().loadAllRewardsData(),
