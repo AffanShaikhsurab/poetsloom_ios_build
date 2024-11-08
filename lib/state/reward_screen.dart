@@ -1,10 +1,16 @@
-
+// rewards_state.dart
+import 'package:equatable/equatable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:test_app/state/rewards.dart';
+import 'package:web3dart/web3dart.dart';
+// rewards_cubit.dart
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:test_app/services/contract.dart';
 // rewards_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:test_app/state/rewards.dart';
-import 'package:test_app/state/user.dart';
 import 'package:web3dart/web3dart.dart';
+
 
 class RewardsScreen extends StatefulWidget {
   @override
@@ -12,7 +18,11 @@ class RewardsScreen extends StatefulWidget {
 }
 
 class _RewardsScreenState extends State<RewardsScreen> {
-  bool _isWithdrawing = false;
+  @override
+  void initState() {
+    super.initState();
+    context.read<RewardsCubit>().loadAllRewardsData();
+  }
 
   String _formatEther(BigInt wei) {
     final ether = EtherAmount.fromBigInt(EtherUnit.wei, wei)
@@ -20,11 +30,234 @@ class _RewardsScreenState extends State<RewardsScreen> {
     return ether.toStringAsFixed(6);
   }
 
-  @override
-  void initState() {
-    super.initState();
-    // Load rewards when screen opens
-    context.read<RewardsCubit>().loadRewards();
+  Widget _buildUnclaimedBalanceCard(RewardsData state) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).primaryColor.withOpacity(0.1),
+              Theme.of(context).primaryColor.withOpacity(0.05),
+            ],
+          ),
+        ),
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.account_balance_wallet,
+                  color: Theme.of(context).primaryColor,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Unclaimed Balance',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '${_formatEther(state.unclaimedBalance)} ETH',
+              style: TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: state.unclaimedBalance > BigInt.zero && !state.isWithdrawing
+                    ? () => context.read<RewardsCubit>().withdrawBalance()
+                    : null,
+                icon: state.isWithdrawing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.download),
+                label: Text(
+                  state.isWithdrawing ? 'Withdrawing...' : 'Withdraw Balance',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionHistoryCard(RewardsData state) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.history,
+                  color: Theme.of(context).primaryColor,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Transaction History',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Total Earnings: ${state.totalTransactions.toStringAsFixed(6)} ETH',
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (state.transactionHistory.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: state.transactionHistory.length,
+                  separatorBuilder: (context, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                        child: Icon(
+                          Icons.add_circle_outline,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                      title: Text(
+                        'Reward Payment',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Transaction ${state.transactionHistory.length - index}',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${state.transactionHistory[index].toStringAsFixed(6)} ETH',
+                            style: TextStyle(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHowRewardsWork() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.lightbulb_outline,
+                  color: Theme.of(context).primaryColor,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'How Rewards Work',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                child: const Icon(Icons.edit_outlined),
+              ),
+              title: const Text('Create Poems'),
+              subtitle: const Text('Earn rewards for your creative contributions'),
+            ),
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                child: const Icon(Icons.currency_exchange),
+              ),
+              title: const Text('Earn Rewards'),
+              subtitle: const Text('Get paid for quality content and engagement'),
+            ),
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                child: const Icon(Icons.account_balance_wallet),
+              ),
+              title: const Text('Withdraw Balance'),
+              subtitle: const Text('Transfer your earnings to your wallet anytime'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    // Add any additional logout logic here, such as clearing tokens or session data
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 
   @override
@@ -33,129 +266,69 @@ class _RewardsScreenState extends State<RewardsScreen> {
       appBar: AppBar(
         title: const Text('My Rewards'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+        ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          await context.read<RewardsCubit>().loadRewards(
-          );
-        },
+        onRefresh: () => context.read<RewardsCubit>().loadAllRewardsData(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
+          child: BlocBuilder<RewardsCubit, RewardsState>(
+            builder: (context, state) {
+              if (state is RewardsLoading) {
+                return SizedBox(
+                  height: MediaQuery.of(context).size.height - 100,
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+              
+              if (state is RewardsError) {
+                return SizedBox(
+                  height: MediaQuery.of(context).size.height - 100,
+                  child: Center(
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
-                          'Available Balance',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 48,
                         ),
-                        const SizedBox(height: 8),
-                        BlocBuilder<RewardsCubit, RewardsState>(
-                          builder: (context, state) {
-                            if (state is RewardsLoading) {
-                              return const CircularProgressIndicator();
-                            } else if (state is RewardsLoaded) {
-                              return Text(
-                                '${_formatEther(state.amount)} ETH',
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                              );
-                            } else if (state is RewardsError) {
-                              return Text(
-                                'Error: ${state.message}',
-                                style: const TextStyle(color: Colors.red),
-                              );
-                            }
-                            return const Text('--');
-                          },
+                        const SizedBox(height: 16),
+                        Text(
+                          state.message,
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                BlocBuilder<RewardsCubit, RewardsState>(
-                  builder: (context, rewardsState) {
-                    return BlocBuilder<WithdrawCubit, WithdrawState>(
-                      builder: (context, withdrawState) {
-                        final bool hasRewards = rewardsState is RewardsLoaded && 
-                            rewardsState.amount > BigInt.zero;
-                        
-                        return Column(
-                          children: [
-                            FilledButton.icon(
-                              onPressed: !hasRewards || _isWithdrawing ? null : () async {
-                                setState(() => _isWithdrawing = true);
-                                try {
-                                  await context.read<WithdrawCubit>().withdrawRewards();
-                                  // Refresh rewards after withdrawal
-                                  await context.read<RewardsCubit>().loadRewards(
-                                  );
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Withdrawal successful!'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Withdrawal failed: ${e.toString()}'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                } finally {
-                                  if (mounted) {
-                                    setState(() => _isWithdrawing = false);
-                                  }
-                                }
-                              },
-                              icon: _isWithdrawing
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : const Icon(Icons.currency_exchange),
-                              label: Text(_isWithdrawing ? 'Processing...' : 'Withdraw Rewards'),
-                            ),
-                            if (withdrawState is WithdrawFailure)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  withdrawState.error,
-                                  style: const TextStyle(color: Colors.red),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
+                );
+              }
+              
+              if (state is RewardsData) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildUnclaimedBalanceCard(state),
+                    const SizedBox(height: 16),
+                    if (state.transactionHistory.isNotEmpty)
+                      _buildTransactionHistoryCard(state)
+                    else
+                      _buildHowRewardsWork(),
+                  ],
+                );
+              }
+              
+              return const SizedBox.shrink();
+            },
           ),
         ),
       ),

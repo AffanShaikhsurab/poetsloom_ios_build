@@ -111,12 +111,19 @@ class AuthorPoemsCubit extends Cubit<AuthorPoemsState> {
         try {
           final date = _convertBlockchainTimestamp(poemData[4]);
           final content = await _poetsLoomService.retrievePoemContent(poemData[1]);
-          final avatarUrl = 'https://api.dicebear.com/7.x/avataaars/svg?seed=${poemData[2]}';
+            final avatarUrl = await _poetsLoomService.getProfile(int.parse(poemData[3]!.toString()));
                             final likes = await _poetsLoomService.retrieveLikes( poemData[1]);
 
 
          final poem_content = content!["content"] as String;
           final poem_title = content!["title"] as String;
+          var rewards = 0;
+
+          if(content["rewards"] != null){
+              rewards = content!["rewards"] as int ?? 0;
+          }      
+                    List<String> poem_tags  = content["tags"]  == null ? []  as List<String> : (content["tags"] as List).cast<String>();
+
           return Poem(
             id: poemData[5]?.toString() ?? 'unknown',
             title: poem_title  ?? 'Untitled',
@@ -128,7 +135,8 @@ class AuthorPoemsCubit extends Cubit<AuthorPoemsState> {
             poemHash: poemData[1]?.toString() ?? 'unknown',
             authorAvatar: avatarUrl,
             likes: likes?? 0,
-            rewards: 0,
+            rewards: rewards,
+  tags: poem_tags,
             isLiked:  false,
             createdAt: date,
             liked: poemData[7] == 0 ? [BigInt.from(0)] : (poemData[7] as List).cast<BigInt>(),

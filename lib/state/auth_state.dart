@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:test_app/authservice.dart';
@@ -60,14 +63,21 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> signup({
     required String username,
     required String password,
-    required String author_name
+    required String author_name,
+    required String filePath,
+    required Uint8List profileImage
   }) async {
     try {
       emit(AuthLoading());
+      print("loading");
+      
       await _authService.signup(
         username: username,
         password: password,
-        author_name: author_name
+        author_name: author_name,
+        profileImage:  profileImage,
+        filePath: filePath
+        
       );
       final user = _authService.currentUser;
       if (user != null) {

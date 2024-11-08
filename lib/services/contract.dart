@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart' as db;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:test_app/model.dart' as m;
 import 'package:web3dart/web3dart.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:js_util' as js_util;
+import 'package:http/http.dart'; //You can also import the browser version
 
 class PoetsLoomService {
   final Web3Client _client;
@@ -22,14 +22,14 @@ final db.FirebaseDatabase database = db.FirebaseDatabase.instance;
     required String rpcUrl,
     required String privateKey,
     required String contractAddress,
-  }) : _client = Web3Client(rpcUrl, http.Client()),
+  }) : _client = Web3Client(rpcUrl, Client()),
        _privateKey = privateKey,
        _contractAddress = EthereumAddress.fromHex(contractAddress) {
     _initialize();
   }
 
 
-Future<String?> uploadPoemWithHashedKey(String title, String content) async {
+Future<String?> uploadPoemWithHashedKey(String title, String content , List<String> tags) async {
   try {
     // Retrieve the username from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
@@ -49,6 +49,8 @@ Future<String?> uploadPoemWithHashedKey(String title, String content) async {
       'author': username,
       'createdAt': db.ServerValue.timestamp, // Use server timestamp
     'likes' : 0,
+    'rewards' : 0,
+    'tags' : tags
     };
 
     try {
@@ -74,11 +76,11 @@ Future<String?> uploadPoemWithHashedKey(String title, String content) async {
       return key;
     } on Object catch (e) {
       // Handle web-specific Firebase errors
-      if (js_util.hasProperty(e, 'message')) {
-        print('Firebase web error: ${js_util.getProperty(e, 'message')}');
-      } else {
-        print('Unknown error: $e');
-      }
+      // if (js_util.hasProperty(e, 'message')) {
+      //   print('Firebase web error: ${js_util.getProperty(e, 'message')}');
+      // } else {
+      //   print('Unknown error: $e');
+      // }
       return null;
     }
   } catch (e) {
@@ -86,7 +88,23 @@ Future<String?> uploadPoemWithHashedKey(String title, String content) async {
     return null;
   }
 }
+  Future<String> getProfile(int userId) async {
+      final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+      final result = await supabaseClient.
+      from("users")
+      .select("*")
+      .eq("id", userId).single();
 
+      if (result.toString().isEmpty) {
+throw Exception("User not found");
+
+      }
+
+      final profile = result["profile"];
+
+      return profile.toString();
+
+  }
 
 
 /// Adds a follower to the current user's following list in the Supabase database.
@@ -117,6 +135,65 @@ await supabaseClient.from("following").insert({
   }
 
 }
+
+Future<String> addFavorite(int poemId) async {
+  final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+  try{
+  final _prefs = await SharedPreferences.getInstance();
+  final id = json.decode(_prefs.getString("user_data")!)["id"];
+await supabaseClient.from("favorite").insert({
+  'userId' : id,
+  'poemId' : poemId
+});
+  }catch(e){
+    print(e);
+    throw Exception("Unable to add favorite ${e}");
+  }
+
+return "success";
+}
+
+
+Future<List<int>> getFavorites() async {
+
+  final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+  try{
+  final _prefs = await SharedPreferences.getInstance();
+  final id = json.decode(_prefs.getString("user_data")!)["id"];
+final result = await supabaseClient.from("favorite").select("poemId").eq("userId", int.parse(id));
+
+  if (result.toString().isEmpty) {
+    return [];
+  }
+
+  final poemIds = result.map((poem) => int.parse (poem["poemId"].toString())).toList();
+  print(poemIds);
+  return poemIds;
+
+  }catch(e){
+    print(e);
+    throw Exception("Unable to add favorite ${e}");
+  }
+
+}
+  
+
+Future<String> removeFromFavorites(int poemId) async {
+  final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+  try{
+  final _prefs = await SharedPreferences.getInstance();
+  final id = json.decode(_prefs.getString("user_data")!)["id"];
+await supabaseClient.from("favorite").delete().eq('userId', id).eq('poemId', poemId);
+  }catch(e){
+    print(e);
+    throw Exception("Unable to remove the  favorite ${e}");
+  }
+
+return "success";
+}
+
+
+
 
 Future<String?> updatePoem(String title, String content , int userId , String key) async {
   try {
@@ -150,11 +227,11 @@ Future<String?> updatePoem(String title, String content , int userId , String ke
       return key;
     } on Object catch (e) {
       // Handle web-specific Firebase errors
-      if (js_util.hasProperty(e, 'message')) {
-        print('Firebase web error: ${js_util.getProperty(e, 'message')}');
-      } else {
-        print('Unknown error: $e');
-      }
+      // if (js_util.hasProperty(e, 'message')) {
+      //   print('Firebase web error: ${js_util.getProperty(e, 'message')}');
+      // } else {
+      //   print('Unknown error: $e');
+      // }
       return null;
     }
   } catch (e) {
@@ -188,11 +265,11 @@ Future<Map<String, dynamic>?> retrievePoemByKey(String key) async {
     return null;
   } on Object catch (e) {
     // Handle web-specific errors
-    if (js_util.hasProperty(e, 'message')) {
-      print('Firebase web error during retrieval: ${js_util.getProperty(e, 'message')}');
-    } else {
-      print('Error retrieving poem: $e');
-    }
+    // if (js_util.hasProperty(e, 'message')) {
+    //   print('Firebase web error during retrieval: ${js_util.getProperty(e, 'message')}');
+    // } else {
+    //   print('Error retrieving poem: $e');
+    // }
     return null;
   }
 }
@@ -212,6 +289,58 @@ bool validatePoemData(String title, String content) {
 }
 
 
+Future<String> addComment(int poemId, String comment) async {
+
+final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+  try{
+  final _prefs = await SharedPreferences.getInstance();
+  final id = json.decode(_prefs.getString("user_data")!)["id"];
+
+await supabaseClient.from("comments").insert({
+  'userId' : id,
+  'poemId' : poemId,
+  'comment' : comment,
+      'timestamp': DateTime.now().toIso8601String(), // Convert DateTime to ISO 8601 string
+});
+
+return "success";
+  }catch(e){
+    print(e);
+    throw Exception("Unable to add comment ${e}");
+  }
+
+
+}
+
+
+Future<List<m.Comment>> getComments(int poemId) async {
+
+final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+  try{
+
+final result = await supabaseClient.from("comments").select("*").eq("poemId", poemId);
+
+List<m.Comment> comments = [];
+
+for (var comment in result) {
+  final userName  = await supabaseClient.from("users").select("*").eq("id", comment["userId"]).single();
+comments.add(
+  m.Comment(
+    id: poemId.toString(),
+    content: comment["comment"],
+    timestamp: DateTime.parse(comment["timestamp"]), // Convert string to DateTime
+    author: userName["author_name"],
+  ),
+);}
+print("the commetns are : ${comments}");
+return comments;
+  }catch(e){
+    print(e);
+    throw Exception("Unable to add comment ${e}");
+  }
+
+
+}
 Future<Map?> retrievePoemContent(String hashKey) async {
   try {
     // Create a reference to the Realtime Database
@@ -271,6 +400,7 @@ String generateHashKey(String username, String title, int timestamp) {
 }
 
   Future<void> _initialize() async {
+    
     // Load contract ABI
     _contract = DeployedContract(
       ContractAbi.fromJson(_abiJson, 'PoetsLoom'),
@@ -344,9 +474,14 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
     }
   }
 
+
+  
+  
+  
   // Get all poems
   Future<List> getPoems() async {
     final function = _contract.function('getPoems');
+    
     
     try {
       final result = await _client.call(
@@ -389,9 +524,14 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
           .eq('userid', id)
           .eq('poemId', poemId);
 
-          if(result.length > 0){
+          if(result.isNotEmpty ){
             throw Exception('Poem already liked');
           }
+
+            await supabaseClient.from("likes").insert({
+            'userid': id,
+            'poemId': poemId,
+          });
 
           await db.FirebaseDatabase.instance
           .ref()
@@ -401,10 +541,7 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
 
           // add to supbase 
 
-           await supabaseClient.from("likes").insert({
-            'userid': id,
-            'poemId': poemId,
-          });
+         
 
   }catch(e){
     print('Failed to like poem: ${e.toString()}');
@@ -470,12 +607,13 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
     //   throw Exception('Failed to like poem: ${e.toString()}');
     // }
   // Fixed reward poem function
-  Future<String> rewardPoem(BigInt poemId, BigInt amount) async {
+  Future<String> rewardPoem(BigInt poemId, BigInt amount , int authorId , String poemHash , int reward )async {
     final function = _contract.function('rewardPoem');
-    print("poemId is ${poemId}");
+    print("poemId is ${poemId} with reward ${amount}");
     try {
       // Convert amount to Wei if it's not already
-      final weiAmount = EtherAmount.fromBigInt(EtherUnit.wei, BigInt.from(1000000));
+
+      final weiAmount = EtherAmount.fromBigInt(EtherUnit.wei, amount);
       
       // Add gas limit and proper value handling
       final result = await _client.sendTransaction(
@@ -493,15 +631,59 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
       // Wait for transaction receipt to confirm
   
       print(result.toString());
-      if (result == null) {
+      if (result.isEmpty) {
         throw Exception('Transaction failed: No receipt received');
       }
       
+
+              final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+
+          final _prefs = await SharedPreferences.getInstance();
+          final id = await json.decode(_prefs.getString("user_data")!)["id"];
+
+          final res = await supabaseClient.from("rewards")
+            .insert({"userId":int.parse(id), "authorId": authorId, "amount": amount.toDouble()});
+          
+          if (res.toString().isEmpty) {
+            throw Exception('Failed to reward poem: ${res}');
+          }
+          
+      await db.FirebaseDatabase.instance
+          .ref()
+          .child('poems')
+          .child(poemHash)
+          .child("rewards").set(reward);
+
+
       return result;
     } catch (e) {
       print('Error in rewardPoem: ${e.toString()}');
       throw Exception('Failed to reward poem: ${e.toString()}');
     }
+  }
+
+
+  Future<List<double>> getRewards() async {
+     final _prefs = await SharedPreferences.getInstance();
+          final id = await json.decode(_prefs.getString("user_data")!)["id"];
+              final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+          print("fetching rewards");
+          final result = await supabaseClient
+          .from("rewards")
+          .select("*")
+          .eq("authorId", int.parse(id));
+
+       
+        print(" the rewards are ${result}");
+          List<double> rewards = [];
+          for (var reward in result) {
+             final weiAmount = EtherAmount.fromBigInt(EtherUnit.wei, BigInt.from(reward['amount']));
+  final ethAmount = weiAmount.getValueInUnit(EtherUnit.ether); // Converts wei to ETH
+            rewards.add(ethAmount);
+          }
+          print(" the rewards in the eht are ${rewards}");
+          return rewards;
+
   }
   // Withdraw rewards
   Future<String> withdrawAmount() async {
@@ -1050,4 +1232,5 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
     }
   ]
 ''';
+
 }

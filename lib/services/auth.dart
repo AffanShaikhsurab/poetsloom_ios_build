@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 
+
 class AuthService with ChangeNotifier {
   final SupabaseClient _supabase;
   
@@ -30,6 +31,7 @@ class AuthService with ChangeNotifier {
     }
     notifyListeners();
   }
+
 
   Future<void> _saveAuthData(String token, User user) async {
     final prefs = await SharedPreferences.getInstance();
@@ -119,11 +121,25 @@ class AuthService with ChangeNotifier {
     required String username,
     required String email, 
     required String password,
-    required String publicAddress
+    required String publicAddress,
+    required Uint8List profileImage,
+    required String filePath
   }) async {
     try {
       // Encrypt password with user's public address
       final encryptedPassword = encryptPassword(password, publicAddress);
+
+      // upload to the supabase storage
+      final image = await _supabase.storage.from('user_profile').uploadBinary(
+        filePath,
+     profileImage
+      );
+
+      final imageUrl =  await _supabase.storage.from("user_profile").getPublicUrl(filePath);
+      print("the public url is $imageUrl");
+      if (image.toString().isEmpty) {
+        throw AuthException('Failed to upload profile image');
+      }
 
       // Insert user into Supabase
       final response = await _supabase
@@ -132,7 +148,8 @@ class AuthService with ChangeNotifier {
           'username': username,
           'email': email,
           'password': encryptedPassword,
-          'public_address': publicAddress
+          'author_name': publicAddress,
+          'profile_img': imageUrl.toString()
         })
         .select()
         .single();

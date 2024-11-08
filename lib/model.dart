@@ -9,6 +9,7 @@ class Poem {
   final String authorUsername;
   final String authorAvatar;
   final String poemHash;
+  final List<String> tags;
   final List<BigInt> liked;
   int likes;
   int rewards;
@@ -29,6 +30,7 @@ class Poem {
     required this.authorAddress,
     required this.createdAt,
     required this.poemHash,
+    required this.tags,
     required this.liked,
   });
 
@@ -48,6 +50,7 @@ class Poem {
       createdAt: DateTime.parse(json['createdAt']),
       liked: List<BigInt>.from(json['liked']),
       poemHash: json['poemHash'],
+      tags: List<String>.from(json['tags']),
     );
   }
 
@@ -65,6 +68,9 @@ class Poem {
       'rewards': rewards,
       'isLiked': isLiked,
       'createdAt': createdAt.toIso8601String(),
+      'liked': liked,
+      'poemHash': poemHash,
+      'tags': tags
     };
   }
 
@@ -83,6 +89,7 @@ class Poem {
     List<BigInt>? liked,
     String? poemHash,
     String? authorAddress,
+    List<String>? tags,
 
   }) {
     return Poem(
@@ -100,6 +107,7 @@ class Poem {
       createdAt: createdAt ?? this.createdAt,
       liked: liked ?? this.liked,
       poemHash: poemHash ?? this.poemHash,
+      tags: tags ?? this.tags,
     );
   }
 }
@@ -173,4 +181,19 @@ class User {
       totalRewards: totalRewards ?? this.totalRewards,
     );
   }
+}
+class Comment {
+  final String id;
+  final String author;
+  final String content;
+  final DateTime timestamp;
+
+  Comment({
+    required this.id,
+    required this.author,
+    required this.content,
+    required this.timestamp,
+  });
+
+  // Add toJson and fromJson methods if needed
 }

@@ -1,4 +1,3 @@
-// rewards_state.dart
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:test_app/services/contract.dart';
@@ -13,13 +12,34 @@ class RewardsInitial extends RewardsState {}
 
 class RewardsLoading extends RewardsState {}
 
-class RewardsLoaded extends RewardsState {
-  final BigInt amount;
+class RewardsData extends RewardsState {
+  final BigInt unclaimedBalance;
+  final List<double> transactionHistory;
+  final bool isWithdrawing;
   
-  RewardsLoaded(this.amount);
+  RewardsData({
+    required this.unclaimedBalance,
+    this.transactionHistory = const [],
+    this.isWithdrawing = false,
+  });
+  
+  double get totalTransactions => 
+      transactionHistory.fold(0.0, (sum, amount) => sum + amount);
+  
+  RewardsData copyWith({
+    BigInt? unclaimedBalance,
+    List<double>? transactionHistory,
+    bool? isWithdrawing,
+  }) {
+    return RewardsData(
+      unclaimedBalance: unclaimedBalance ?? this.unclaimedBalance,
+      transactionHistory: transactionHistory ?? this.transactionHistory,
+      isWithdrawing: isWithdrawing ?? this.isWithdrawing,
+    );
+  }
   
   @override
-  List<Object?> get props => [amount];
+  List<Object?> get props => [unclaimedBalance, transactionHistory, isWithdrawing];
 }
 
 class RewardsError extends RewardsState {
@@ -31,19 +51,38 @@ class RewardsError extends RewardsState {
   List<Object?> get props => [message];
 }
 
-
+// rewards_cubit.dart
 class RewardsCubit extends Cubit<RewardsState> {
   final PoetsLoomService _poetsLoomService;
   
   RewardsCubit(this._poetsLoomService) : super(RewardsInitial());
   
-  Future<void> loadRewards() async {
+  Future<void> loadAllRewardsData() async {
     emit(RewardsLoading());
     try {
-      final rewards = await _poetsLoomService.getAuthorRewards();
-      emit(RewardsLoaded(rewards));
+      final unclaimedBalance = await _poetsLoomService.getAuthorRewards();
+      final transactionHistory = await _poetsLoomService.getRewards();
+      
+      emit(RewardsData(
+        unclaimedBalance: unclaimedBalance,
+        transactionHistory: transactionHistory,
+      ));
     } catch (e) {
       emit(RewardsError('Failed to load rewards: ${e.toString()}'));
+    }
+  }
+
+  Future<void> withdrawBalance() async {
+    final currentState = state;
+    if (currentState is RewardsData) {
+      emit(currentState.copyWith(isWithdrawing: true));
+      
+      try {
+        await _poetsLoomService.withdrawAmount();
+        await loadAllRewardsData();
+      } catch (e) {
+        emit(RewardsError('Failed to withdraw balance: ${e.toString()}'));
+      }
     }
   }
 }

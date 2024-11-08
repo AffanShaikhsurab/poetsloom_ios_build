@@ -43,6 +43,7 @@ class AddPoemCubit extends Cubit<AddPoemState> {
   Future<void> addPoem({
     required String title,
     required String content,
+    required List<String> tags
   }) async {
     emit(AddPoemLoading());
 
@@ -50,7 +51,7 @@ class AddPoemCubit extends Cubit<AddPoemState> {
     final _prefs = await SharedPreferences.getInstance();
     final authorName = await  json.decode(_prefs.getString("user_data")!)["username"] ?? "Anonymous";
     print("Uplaoding peoms");
-    final contentHash =  await _poetsLoomService.uploadPoemWithHashedKey(title, content) ;
+    final contentHash =  await _poetsLoomService.uploadPoemWithHashedKey(title, content , tags) ;
  
     try {
       final transactionHash = await _poetsLoomService.addPoem(
@@ -109,4 +110,6 @@ class WithdrawCubit extends Cubit<WithdrawState> {
       emit(WithdrawFailure(e.toString()));
     }
   }
+
+ 
 }
