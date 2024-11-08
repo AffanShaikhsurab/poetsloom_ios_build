@@ -56,6 +56,8 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> with SingleTickerPr
     _animationController.forward();
   }
 
+
+
   @override
   void dispose() {
     _commentController.dispose();
@@ -94,7 +96,6 @@ void _focusOnComments() {
         poetsLoomService: PoetsLoomService(
                rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/bTJkxdz694BiZKrP7qINHw7NQUrpnd75',
         contractAddress: '0xF0F5234959166Cc8D2Ee9F4C4e029cdbdac93266',
-        privateKey: "dc50e7d15fc7a35ed046e5d2c5151da2bb9a9fd427b2b00ba7db891dd11d0070"
 
       ),
       )..loadComments(int.parse(widget.poem.id)),

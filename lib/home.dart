@@ -3,12 +3,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
+import 'package:test_app/component/wallet_manager.dart';
 import 'package:test_app/create_poem.dart';
 import 'package:test_app/model.dart';
 import 'package:test_app/screens/explore_screen.dart';
 import 'package:test_app/screens/profile_screen.dart';
 import 'package:test_app/state/poems.dart';
 import 'package:test_app/state/reward_screen.dart';
+import 'package:test_app/widget/custom_snackbar.dart';
 import 'package:test_app/widget/poem_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -231,7 +233,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               return _buildLoadingIndicator();
             }
 
-            // Add stagger effect to list items
             return TweenAnimationBuilder<double>(
               duration: Duration(milliseconds: 500 + (index * 100)),
               curve: Curves.easeOutQuart,
@@ -250,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 poem: poems[index],
                 isFavorite: true,
                 onLike: () => context.read<PoetryCubit>().likePoem(poems[index]),
-                onReward: (amount) => context.read<PoetryCubit>().rewardPoem(poems[index], amount),
+                onReward: (amount) => _handleReward(poems[index], amount), // Updated
                 onFollow: () => context.read<PoetryCubit>().addFollower(poems[index]),
                 addToFavorites: (poem) => context.read<PoetryCubit>().addToFavorites(poem),
               ),
@@ -261,7 +262,361 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _handleReward(Poem poem, BigInt amount) async {
+    try {
+      // Check for private key
+      final hasKey = await WalletManager.hasPrivateKey();
+      
+      if (!hasKey) {
+        if (!mounted) return;
+        // Show private key dialog
+        final result = await showPrivateKeyDialog(context);
+        if (result == null) {
+          _showErrorSnackBar('Private key is required to reward poems');
+          return;
+        }
+      }
 
+      // Show loading overlay
+      if (!mounted) return;
+      _showLoadingOverlay(context, 'Processing reward...');
+
+      // Get private key and process reward
+      final privateKey = await WalletManager.getPrivateKey();
+      if (privateKey == null) throw Exception('Private key not found');
+
+      await context.read<PoetryCubit>().rewardPoem(poem, amount , privateKey);
+
+      // Hide loading overlay
+      if (!mounted) return;
+      Navigator.pop(context); // Remove loading overlay
+
+      // Show success message
+      _showSuccessSnackBar('Poem rewarded successfully!');
+
+    } catch (e) {
+      // Hide loading overlay if showing
+      if (mounted) Navigator.pop(context);
+      _showErrorSnackBar(e.toString());
+    }
+  }
+
+
+// Add this beautiful private key dialog
+Future<String?> showPrivateKeyDialog(BuildContext context) {
+  final controller = TextEditingController();
+  bool obscureText = true;
+
+  return showDialog<String>(
+    context: context,
+    builder: (context) => Theme(
+      data: ThemeData.dark().copyWith(
+        dialogBackgroundColor: cardColor,
+      ),
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        contentPadding: const EdgeInsets.all(24),
+        content: StatefulBuilder(
+          builder: (context, setState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.key_rounded,
+                      color: accentColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Text(
+                      'Private Key Required',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'A private key is required to publish poems. This will be stored securely on your device.',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  color: surfaceColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: accentColor.withOpacity(0.3),
+                  ),
+                ),
+                child: TextField(
+                  controller: controller,
+                  obscureText: obscureText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Lora',
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Enter your private key',
+                    hintStyle: TextStyle(
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureText
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                      onPressed: () {
+                        setState(() => obscureText = !obscureText);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          accentColor,
+                          accentColor.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          final key = controller.text.trim();
+                          if (key.isNotEmpty) {
+                            await WalletManager.savePrivateKey(key);
+                            Navigator.pop(context, key);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          child: const Text(
+                            'Continue',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+// Add this method to show a loading overlay during blockchain transactions
+void _showLoadingOverlay(BuildContext context, String s) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(accentColor),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Publishing Poem...',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait while we process your transaction',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// Update the success snackbar to show transaction details
+void _showSuccessSnackBar(String message, {String? txHash}) {
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.green,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (txHash != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    'Transaction Hash: ',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      txHash,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.copy_rounded,
+                      size: 16,
+                    ),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: txHash));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Transaction hash copied'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: cardColor,
+      duration: const Duration(seconds: 5),
+    ),
+  );
+}
+
+ 
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: CustomSnackBar(
+          message: message,
+          icon: Icons.error_outline,
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+    );
+  }
+ 
   Widget _buildBottomNav() {
     return NavigationBar(
       backgroundColor: surfaceColor,
@@ -350,48 +705,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       context.read<PoetryCubit>().loadMorePoems(_tabController.index);
     }
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isDarkMode ? surfaceColor : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.error,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.error_outline,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-    );
   }
 Widget _buildErrorState(String message) {
     return TweenAnimationBuilder<double>(

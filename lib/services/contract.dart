@@ -12,19 +12,16 @@ import 'package:http/http.dart'; //You can also import the browser version
 
 class PoetsLoomService {
   final Web3Client _client;
-  final String _privateKey;
   final EthereumAddress _contractAddress;
   late DeployedContract _contract;
-  late Credentials _credentials;
 final db.FirebaseDatabase database = db.FirebaseDatabase.instance;
-
+   late String _abiJson;
   PoetsLoomService({
     required String rpcUrl,
-    required String privateKey,
     required String contractAddress,
   }) : _client = Web3Client(rpcUrl, Client()),
-       _privateKey = privateKey,
-       _contractAddress = EthereumAddress.fromHex(contractAddress) {
+       _contractAddress = EthereumAddress.fromHex(contractAddress) 
+       {
     _initialize();
   }
 
@@ -401,12 +398,23 @@ String generateHashKey(String username, String title, int timestamp) {
 
   Future<void> _initialize() async {
     
+        final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+
+    final abi = await supabaseClient
+    .from("info")
+    .select("*")
+    .eq("type", "abi");
+    
+     _abiJson = abi[0]["data"];
     // Load contract ABI
     _contract = DeployedContract(
       ContractAbi.fromJson(_abiJson, 'PoetsLoom'),
       _contractAddress,
     );
-    _credentials = EthPrivateKey.fromHex(_privateKey);
+
+    // Load private key
+    final _prefs = await SharedPreferences.getInstance();
+
     database.databaseURL = "https://poetloom-default-rtdb.firebaseio.com/";
   }
 
@@ -415,11 +423,11 @@ String generateHashKey(String username, String title, int timestamp) {
   }
 
   // Add a new poem
-Future<String> addPoem(String title, String encryptedIpfsHash, String authorName) async {
+Future<String> addPoem(String title, String encryptedIpfsHash, String authorName , String _privateKey) async {
   final function = _contract.function('addPoem');
   final _prefs = await SharedPreferences.getInstance();
   final id = json.decode(_prefs.getString("user_data")!)["id"];
-  
+  final _credentials = EthPrivateKey.fromHex(_privateKey);  
   // Convert id to BigInt for uint256 parameter
   final userId = BigInt.from(int.parse(id));
   
@@ -607,14 +615,14 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
     //   throw Exception('Failed to like poem: ${e.toString()}');
     // }
   // Fixed reward poem function
-  Future<String> rewardPoem(BigInt poemId, BigInt amount , int authorId , String poemHash , int reward )async {
+  Future<String> rewardPoem(BigInt poemId, BigInt amount , int authorId , String poemHash , int reward ,String _privateKey )async {
     final function = _contract.function('rewardPoem');
     print("poemId is ${poemId} with reward ${amount}");
     try {
       // Convert amount to Wei if it's not already
 
       final weiAmount = EtherAmount.fromBigInt(EtherUnit.wei, amount);
-      
+      final _credentials = EthPrivateKey.fromHex(_privateKey);
       // Add gas limit and proper value handling
       final result = await _client.sendTransaction(
         _credentials,
@@ -686,9 +694,9 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
 
   }
   // Withdraw rewards
-  Future<String> withdrawAmount() async {
+  Future<String> withdrawAmount(String _privateKey) async {
     final function = _contract.function('withdrawAmount');
-    
+    final _credentials = EthPrivateKey.fromHex(_privateKey);
     try {
       final result = await _client.sendTransaction(
         _credentials,
@@ -709,7 +717,7 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
   
 
   // Get author rewards
-  Future<BigInt> getAuthorRewards() async {
+  Future<BigInt> getAuthorRewards(String _privateKey) async {
     EthereumAddress author  = EthPrivateKey.fromHex(_privateKey).address;
     final function = _contract.function('authorRewards');
     
@@ -758,479 +766,32 @@ Future<String> addPoem(String title, String encryptedIpfsHash, String authorName
     }
   }
 
-  static const String _abiJson = '''
-  [
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "string",
-          "name": "error",
-          "type": "string"
-        }
-      ],
-      "name": "Error",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "_poemId",
-          "type": "uint256"
-        }
-      ],
-      "name": "LikedPoem",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "string",
-          "name": "title",
-          "type": "string"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "_poemCount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "author",
-          "type": "address"
-        }
-      ],
-      "name": "PoemEvent",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "poemId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "RewardGiven",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "RewardWithdrawn",
-      "type": "event"
-    },
-    {
-      "inputs": [],
-      "name": "MAX_AUTHOR_NAME_LENGTH",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "MAX_POEM_TITLE_LENGTH",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "MINIMUM_WITHDRAWAL",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "string",
-          "name": "_title",
-          "type": "string"
-        },
-        {
-          "internalType": "string",
-          "name": "_encryptedIpfsHash",
-          "type": "string"
-        },
-        {
-          "internalType": "string",
-          "name": "_author",
-          "type": "string"
-        },
-        {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        }
-      ],
-      "name": "addPoem",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "authorRewards",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        }
-      ],
-      "name": "getAuthorPoems",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "string",
-              "name": "title",
-              "type": "string"
-            },
-            {
-              "internalType": "string",
-              "name": "encryptedIpfsHash",
-              "type": "string"
-            },
-            {
-              "internalType": "address",
-              "name": "author",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "id",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "poemId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "likes",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256[]",
-              "name": "liked",
-              "type": "uint256[]"
-            },
-            {
-              "internalType": "string",
-              "name": "authorName",
-              "type": "string"
-            }
-          ],
-          "internalType": "struct PoetsLoom.poem[]",
-          "name": "",
-          "type": "tuple[]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_poemId",
-          "type": "uint256"
-        }
-      ],
-      "name": "getPoemById",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        },
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        },
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        },
-        {
-          "internalType": "uint256[]",
-          "name": "",
-          "type": "uint256[]"
-        },
-        {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getPoems",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "string",
-              "name": "title",
-              "type": "string"
-            },
-            {
-              "internalType": "string",
-              "name": "encryptedIpfsHash",
-              "type": "string"
-            },
-            {
-              "internalType": "address",
-              "name": "author",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "id",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "poemId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "likes",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256[]",
-              "name": "liked",
-              "type": "uint256[]"
-            },
-            {
-              "internalType": "string",
-              "name": "authorName",
-              "type": "string"
-            }
-          ],
-          "internalType": "struct PoetsLoom.poem[]",
-          "name": "",
-          "type": "tuple[]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_poemId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        }
-      ],
-      "name": "likePoem",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "poems",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "title",
-          "type": "string"
-        },
-        {
-          "internalType": "string",
-          "name": "encryptedIpfsHash",
-          "type": "string"
-        },
-        {
-          "internalType": "address",
-          "name": "author",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "timestamp",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "poemId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "likes",
-          "type": "uint256"
-        },
-        {
-          "internalType": "string",
-          "name": "authorName",
-          "type": "string"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_poemId",
-          "type": "uint256"
-        }
-      ],
-      "name": "rewardPoem",
-      "outputs": [],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "userLikedPoems",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "withdrawAmount",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ]
-''';
+  Future<void> getInfo() async {
+    
+    final supabaseClient = SupabaseClient('https://tfxbcnluzthdrwhtrntb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmeGJjbmx1enRoZHJ3aHRybnRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0NjI2NjksImV4cCI6MjA0NjAzODY2OX0.at0R_6S9vUk666sS1xJA_2jIoRLez_YN2PBLo_822vM');
+  try{
+    final results = await supabaseClient
+    .from("info")
+    .select("*")
+    .eq("type", "contract_address");
+    
+    final contract_address = results[0]["data"];
+
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString("contract_address", contract_address);
+
+
+    final abi = await supabaseClient
+    .from("info")
+    .select("*")
+    .eq("type", "abi");
+    
+     _abiJson = abi[0]["data"];
+
+
+  }catch(e){
+    throw Exception('Failed to get info: ${e.toString()}');
+  }
+  }
 
 }

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:test_app/component/wallet_manager.dart';
 import 'package:test_app/services/contract.dart';
 import 'package:web3dart/web3dart.dart';
 
@@ -53,36 +54,64 @@ class RewardsError extends RewardsState {
 
 // rewards_cubit.dart
 class RewardsCubit extends Cubit<RewardsState> {
-  final PoetsLoomService _poetsLoomService;
+  final PoetsLoomService _service;
   
-  RewardsCubit(this._poetsLoomService) : super(RewardsInitial());
-  
+  RewardsCubit(this._service) : super(RewardsLoading());
+
   Future<void> loadAllRewardsData() async {
-    emit(RewardsLoading());
     try {
-      final unclaimedBalance = await _poetsLoomService.getAuthorRewards();
-      final transactionHistory = await _poetsLoomService.getRewards();
+      emit(RewardsLoading());
       
+      final hasKey = await WalletManager.hasPrivateKey();
+      if (!hasKey) {
+        emit(RewardsError('Private key required to view rewards'));
+        return;
+      }
+
+      final privateKey = await WalletManager.getPrivateKey();
+      if (privateKey == null) {
+        emit(RewardsError('Unable to access private key'));
+        return;
+      }
+
+      final unclaimedBalance = await _service.getAuthorRewards(privateKey);
+      final transactionHistory = await _service.getRewards();
+      final totalTransactions = transactionHistory.fold(0.0, (a, b) => a + b);
+
       emit(RewardsData(
         unclaimedBalance: unclaimedBalance,
         transactionHistory: transactionHistory,
+        isWithdrawing: false,
       ));
     } catch (e) {
-      emit(RewardsError('Failed to load rewards: ${e.toString()}'));
+      emit(RewardsError(e.toString()));
     }
   }
 
   Future<void> withdrawBalance() async {
-    final currentState = state;
-    if (currentState is RewardsData) {
+    if (state is! RewardsData) return;
+    final currentState = state as RewardsData;
+
+    try {
       emit(currentState.copyWith(isWithdrawing: true));
-      
-      try {
-        await _poetsLoomService.withdrawAmount();
-        await loadAllRewardsData();
-      } catch (e) {
-        emit(RewardsError('Failed to withdraw balance: ${e.toString()}'));
+
+      final hasKey = await WalletManager.hasPrivateKey();
+      if (!hasKey) {
+        emit(RewardsError('Private key required to withdraw'));
+        return;
       }
+
+      final privateKey = await WalletManager.getPrivateKey();
+      if (privateKey == null) {
+        emit(RewardsError('Unable to access private key'));
+        return;
+      }
+
+      await _service.withdrawAmount(privateKey);
+      await loadAllRewardsData();
+
+    } catch (e) {
+      emit(RewardsError(e.toString()));
     }
   }
 }

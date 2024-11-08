@@ -7,6 +7,8 @@ import 'package:test_app/authservice.dart';
 import 'package:test_app/screens/fav_poems.dart';
 import 'package:test_app/screens/my_poems.dart';
 import 'dart:math' as math;
+
+import 'package:test_app/screens/private_key.dart';
 class User {
   final String id;
   final String username;
@@ -642,6 +644,11 @@ Widget _buildProfileSection() {
         'title': 'Settings',
         'route': const AuthorPoemsScreen(),
       },
+        {
+      'icon': Icons.vpn_key_rounded, // Add this item
+      'title': 'Private Key',
+      'route': const PrivateKeyManagementScreen(),
+    },
       {
         'icon': Icons.logout_rounded,
         'title': 'Logout',

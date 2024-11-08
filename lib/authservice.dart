@@ -214,7 +214,7 @@ Future<String> signup({
       profile: imageUrl,
 
     );
-
+print("signup response ${response.toString()}");
     await _saveAuthData('mock_token', user);
     return imageUrl;
     
