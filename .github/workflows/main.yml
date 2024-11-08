@@ -9,13 +9,15 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: v1  # Specify the branch to check out
 
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           architecture: x64
+
       - run: flutter pub get
-      
 
       - run: pod repo update
         working-directory: ios
@@ -25,7 +27,7 @@ jobs:
       - run: mkdir Payload
         working-directory: build/ios/iphoneos
 
-      - run: mv Runner.app/ Payload
+      - run: mv Runner.app Payload
         working-directory: build/ios/iphoneos
 
       - name: Zip output
@@ -39,4 +41,4 @@ jobs:
           file: build/ios/iphoneos/FlutterIpaExport.ipa
           tag: v1.0
           overwrite: true
-          body: "This is first release"
+          body: "This is the first release"
