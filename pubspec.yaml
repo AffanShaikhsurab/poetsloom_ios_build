@@ -28,6 +28,8 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   path: ^1.9.0
   share_plus: ^10.1.2
+  google_fonts: ^4.0.4
+  permission_handler: ^11.3.1
 
 
 dev_dependencies:

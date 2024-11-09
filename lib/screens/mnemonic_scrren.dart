@@ -117,71 +117,94 @@ class _MnemonicGenerationScreenState extends State<MnemonicGenerationScreen>
     _controller.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.blue.shade900,
-                Colors.blue.shade800,
-                Colors.blue.shade700,
+                Color.fromARGB(255, 0, 6, 20),
+                Color.fromARGB(255, 15, 23, 42),
               ],
             ),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(height: 40),
-                const Text(
-                  'Backup Keys',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                const SizedBox(height: 40),
+                ShaderMask(
+                  shaderCallback: (Rect bounds) {
+                    return const LinearGradient(
+                      colors: [
+                        Color.fromARGB(255, 99, 102, 241),
+                        Color.fromARGB(255, 168, 85, 247),
+                      ],
+                    ).createShader(bounds);
+                  },
+                  child: const Text(
+                    'Backup Keys',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 const Text(
                   'Store these keys safely. You\'ll need them to recover your account.',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.white70,
+                    color: Colors.white60,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 40),
+                const SizedBox(height: 40),
                 if (_error != null)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 20),
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.red.withOpacity(0.2),
+                      ),
+                    ),
                     child: Text(
                       _error!,
                       style: TextStyle(
                         color: Colors.red.shade300,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                       textAlign: TextAlign.center,
                     ),
                   ),
                 if (_isLoading || !_showMnemonic)
-                  Expanded(
+                  Container(
+                    height: 120,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Center(
-                      child: Lottie.asset(
-                        'assets/loading.json',
-                        controller: _controller,
-                        onLoaded: (composition) {
-                          _controller
-                            ..duration = composition.duration
-                            ..forward();
-                        },
+                      child: SizedBox(
+                        width: 80,
+                        height: 80,
+                        child: Lottie.asset(
+                          'assets/loading.json',
+                          controller: _controller,
+                          onLoaded: (composition) {
+                            _controller
+                              ..duration = composition.duration
+                              ..forward();
+                          },
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   )
@@ -198,7 +221,7 @@ class _MnemonicGenerationScreenState extends State<MnemonicGenerationScreen>
                             'Key',
                           ),
                         ),
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
                         _BuildKeyCard(
                           title: 'Recovery Phrase',
                           value: _mnemonic ?? '',
@@ -211,35 +234,52 @@ class _MnemonicGenerationScreenState extends State<MnemonicGenerationScreen>
                     ),
                   ),
                 if (_showMnemonic) ...[
-                  SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: _keysCopied ? _saveMnemonicAndProceed : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.blue.shade900,
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                  const SizedBox(height: 32),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: _keysCopied
+                          ? const LinearGradient(
+                              colors: [
+                                Color.fromARGB(255, 99, 102, 241),
+                                Color.fromARGB(255, 168, 85, 247),
+                              ],
+                            )
+                          : null,
+                      color: _keysCopied
+                          ? null
+                          : const Color.fromARGB(255, 30, 41, 59),
                     ),
-                    child: const Text(
-                      'I\'ve Saved My Keys',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    child: ElevatedButton(
+                      onPressed: _keysCopied ? _saveMnemonicAndProceed : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'I\'ve Saved My Keys',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox(height: 16),
-                  const Text(
+                  const SizedBox(height: 16),
+                  Text(
                     'Please copy both keys before proceeding',
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: Colors.white.withOpacity(0.6),
                       fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                 ],
               ],
             ),
@@ -250,7 +290,7 @@ class _MnemonicGenerationScreenState extends State<MnemonicGenerationScreen>
   }
 }
 
-// Keeping the _BuildKeyCard widget unchanged as it's already stateless
+// Update the key card design
 class _BuildKeyCard extends StatelessWidget {
   final String title;
   final String value;
@@ -266,15 +306,15 @@ class _BuildKeyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: const Color.fromARGB(255, 99, 102, 241).withOpacity(0.2),
           width: 1,
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -283,19 +323,23 @@ class _BuildKeyCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
                     fontSize: 14,
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.copy, color: Colors.white70),
+                  icon: Icon(
+                    Icons.copy,
+                    color: Colors.white.withOpacity(0.7),
+                    size: 20,
+                  ),
                   onPressed: onCopy,
                 ),
               ],
             ),
-            SizedBox(height: 8),
-            Text(
+            const SizedBox(height: 8),
+            SelectableText(
               value,
               style: const TextStyle(
                 color: Colors.white,

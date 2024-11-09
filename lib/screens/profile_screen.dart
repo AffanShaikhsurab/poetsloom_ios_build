@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test_app/authservice.dart' as auth;
 import 'package:test_app/create_poem.dart';
+import 'package:test_app/main.dart';
 import 'package:test_app/screens/fav_poems.dart';
 import 'package:test_app/screens/my_poems.dart';
 import 'dart:math' as math;
@@ -982,8 +983,12 @@ Widget _buildShareOption({
           onPressed: () async {
             final prefs = await SharedPreferences.getInstance();
             await prefs.clear();
-             Navigator.pop(context, true);
-             
+           Navigator.of(context).pushAndRemoveUntil(
+  MaterialPageRoute(
+    builder: (context) =>  MyApp(),  // Your main app widget
+  ),
+  (route) => false,
+);  
           },
           style: TextButton.styleFrom(
             foregroundColor: Colors.red,

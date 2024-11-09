@@ -681,25 +681,25 @@ Future<void> _logout() async {
     // Add any additional logout logic here, such as clearing tokens or session data
     Navigator.of(context).pushReplacementNamed('/login');
   }
-
-  @override
+@override
 Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
       title: const Text('My Rewards'),
       centerTitle: true,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: _logout,
-        ),
-      ],
+     
     ),
     body: FutureBuilder<bool>(
       future: WalletManager.hasPrivateKey(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData) {
+          return const Center(
+            child: SizedBox(
+              width: 50,
+              height: 50,
+              child: CircularProgressIndicator(),
+            ),
+          );
         }
 
         final hasKey = snapshot.data ?? false;
@@ -711,70 +711,108 @@ Widget build(BuildContext context) {
           );
         }
 
-        return RefreshIndicator(
-          onRefresh: () => context.read<RewardsCubit>().loadAllRewardsData(),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16.0),
-            child: BlocBuilder<RewardsCubit, RewardsState>(
-              builder: (context, state) {
-         
-              if (state is RewardsLoading) {
-                return SizedBox(
-                  height: MediaQuery.of(context).size.height - 100,
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
-              
-              if (state is RewardsError) {
-                return SizedBox(
-                  height: MediaQuery.of(context).size.height - 100,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          state.message,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+        return BlocBuilder<RewardsCubit, RewardsState>(
+          builder: (context, state) {
+            return RefreshIndicator(
+              onRefresh: () async {
+                await context.read<RewardsCubit>().loadAllRewardsData();
+              },
+              color: accentColor,
+              backgroundColor: surfaceColor,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          if (state is RewardsData) ...[
+                            _buildUnclaimedBalanceCard(state),
+                            const SizedBox(height: 16),
+                            if (state.transactionHistory.isNotEmpty)
+                              _buildTransactionHistoryCard(state)
+                            else
+                              _buildHowRewardsWork(),
+                          ] else if (state is RewardsError) ...[
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height - 200,
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red.shade300,
+                                      size: 48,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                                      child: Text(
+                                        state.message,
+                                        style: TextStyle(
+                                          color: Colors.red.shade300,
+                                          fontSize: 16,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        context.read<RewardsCubit>().loadAllRewardsData();
+                                      },
+                                      icon: const Icon(Icons.refresh),
+                                      label: const Text('Try Again'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: accentColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            // Initial or Loading state
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height - 200,
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.arrow_downward,
+                                      color: Colors.white.withOpacity(0.5),
+                                      size: 32,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Pull down to refresh',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                          // Add some bottom padding
+                          const SizedBox(height: 32),
+                        ],
+                      ),
                     ),
                   ),
-                );
-              }
-              
-              if (state is RewardsData) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildUnclaimedBalanceCard(state),
-                    const SizedBox(height: 16),
-                    if (state.transactionHistory.isNotEmpty)
-                      _buildTransactionHistoryCard(state)
-                    else
-                      _buildHowRewardsWork(),
-                  ],
-                );
-              }
-              
-              return const SizedBox.shrink();
-            },
-      
-          ),
-        )
-      
-      );
-      }
+                ],
+              ),
+            );
+          },
+        );
+      },
     ),
-    );
-  }
+  );
+}
 }

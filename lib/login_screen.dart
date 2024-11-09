@@ -12,6 +12,8 @@ import 'package:test_app/screens/mnemonic_scrren.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:crypto/crypto.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:test_app/state/auth_state.dart';
 import 'package:test_app/home.dart';
@@ -80,14 +82,14 @@ class _PrivateKeyInputScreenState extends State<PrivateKeyInputScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: backgroundColor,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: backgroundColor,
-          elevation: 0,
-        ),
+  return Theme(
+    data: ThemeData.dark().copyWith(
+      scaffoldBackgroundColor: const Color(0xFF000000), // Pure black background
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF000000),
+        elevation: 0,
       ),
+    ),
       child: Scaffold(
         body: BlocConsumer<AuthCubit, AuthState>(
              listener: (context, state) async {
@@ -124,209 +126,228 @@ class _PrivateKeyInputScreenState extends State<PrivateKeyInputScreen>
             );
           }
         },
-          builder: (context, state) {
-            return Stack(
-              children: [
-                // Background gradient
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          accentColor.withOpacity(0.1),
-                          backgroundColor,
-                        ],
-                      ),
-                    ),
-                  ),
+        builder: (context, state) {
+          return SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 40),
+                    _buildHeader(),
+                    const SizedBox(height: 40),
+                    _buildForm(state),
+                  ],
                 ),
-
-                // Main content
-                SafeArea(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.all(24),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 40),
-                          _buildHeader(),
-                          const SizedBox(height: 40),
-                          _buildForm(state),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _isSignup ? 'Create Account' : 'Welcome Back',
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _isSignup 
-                ? 'Start your poetic journey today'
-                : 'Sign in to continue your journey',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildForm(AuthState state) {
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, 0.2),
-        end: Offset.zero,
-      ).animate(_slideAnimation),
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          children: [
-            if (_isSignup) _buildProfileImagePicker(),
-            if (_isSignup) const SizedBox(height: 24),
-            _buildInputField(
-              controller: _usernameController,
-              label: 'Username',
-              icon: Icons.person_outline_rounded,
-            ),
-            const SizedBox(height: 16),
-            if (_isSignup) _buildInputField(
-              controller: _authorNameController,
-              label: 'Author Name',
-              icon: Icons.edit_outlined,
-            ),
-            if (_isSignup) const SizedBox(height: 16),
-            _buildPasswordField(),
-            const SizedBox(height: 16),
-            if (!_isSignup) _buildInputField(
-              controller: _mnemonicController,
-              label: 'Mnemonic Phrases',
-              icon: Icons.vpn_key_outlined,
-            ),
-            if (!_isSignup) const SizedBox(height: 16),
-            if (_isSignup) _buildConfirmPasswordField(),
-            if (_isSignup) const SizedBox(height: 16),
-            const SizedBox(height: 24),
-            _buildSubmitButton(state),
-            const SizedBox(height: 24),
-            _buildToggleButton(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileImagePicker() {
-    return GestureDetector(
-      onTap: _selectProfileImage,
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: cardColor,
-          border: Border.all(
-            color: accentColor.withOpacity(0.3),
-            width: 2,
-          ),
-          image: _selectedProfileImage != null
-              ? DecorationImage(
-                  image: kIsWeb
-                      ? Image.network(_selectedProfileImage!.path).image
-                      : FileImage(File(_selectedProfileImage!.path)),
-                  fit: BoxFit.cover,
-                )
-              : null,
-        ),
-        child: _selectedProfileImage == null
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_a_photo_rounded,
-                    size: 32,
-                    color: Colors.white.withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add Photo',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              )
-            : null,
-      ),
-    );
-  }
-
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-        ),
-      ),
-      child: TextFormField(
-        controller: controller,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color: Colors.white.withOpacity(0.6),
-          ),
-          prefixIcon: Icon(
-            icon,
-            color: accentColor.withOpacity(0.7),
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(20),
-        ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'This field is required';
-          }
-          return null;
+          );
         },
       ),
-    );
-  }
+    ),
+  );
+}
 
+  Widget _buildHeader() {
+  return FadeTransition(
+    opacity: _fadeAnimation,
+    child: Column(
+      children: [
+        // Logo
+        ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Image.asset(
+            'assets/icon.png',
+            width: 80,
+            height: 80,
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // App Name
+        Text(
+          'PoetsLoom',
+          style: GoogleFonts.inter(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // Tagline
+        Text(
+          _isSignup ? 'Create your account' : 'Welcome back',
+          style: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.8),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildForm(AuthState state) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (_isSignup) ...[
+        _buildProfileImagePicker(),
+        const SizedBox(height: 32),
+      ],
+      
+      _buildInputField(
+        controller: _usernameController,
+        label: 'Username',
+        icon: Icons.person_outline,
+      ),
+      
+      const SizedBox(height: 16),
+      
+      if (_isSignup) ...[
+        _buildInputField(
+          controller: _authorNameController,
+          label: 'Author Name',
+          icon: Icons.edit_outlined,
+        ),
+        const SizedBox(height: 16),
+      ],
+      
+      _buildPasswordField(),
+      
+      if (!_isSignup) ...[
+        const SizedBox(height: 16),
+        _buildInputField(
+          controller: _mnemonicController,
+          label: 'Recovery Phrase',
+          icon: Icons.key_outlined,
+        ),
+      ],
+      
+      if (_isSignup) ...[
+        const SizedBox(height: 16),
+        _buildConfirmPasswordField(),
+      ],
+      
+      const SizedBox(height: 32),
+      _buildSubmitButton(state),
+      const SizedBox(height: 20),
+      _buildToggleButton(),
+    ],
+  );
+}
+
+Widget _buildInputField({
+  required TextEditingController controller,
+  required String label,
+  required IconData icon,
+}) {
+  return Container(
+    decoration: BoxDecoration(
+      color: const Color(0xFF1A1A1A), // Slightly lighter than background
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: TextFormField(
+      controller: controller,
+      style: GoogleFonts.inter(
+        color: Colors.white,
+        fontSize: 16,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.inter(
+          color: Colors.grey[400],
+          fontSize: 14,
+        ),
+        prefixIcon: Icon(
+          icon,
+          color: Colors.grey[400],
+          size: 20,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accentColor, width: 1),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+      ),
+      validator: (value) {
+        if (value?.isEmpty ?? true) {
+          return 'This field is required';
+        }
+        return null;
+      },
+    ),
+  );
+}
+
+
+Widget _buildSubmitButton(AuthState state) {
+  return SizedBox(
+    height: 50,
+    child: ElevatedButton(
+      onPressed: state is! AuthLoading ? _submitForm : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: accentColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 0,
+      ),
+      child: state is AuthLoading
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : Text(
+              _isSignup ? 'Create Account' : 'Sign In',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+    ),
+  );
+}
+
+Widget _buildToggleButton() {
+  return TextButton(
+    onPressed: () {
+      setState(() {
+        _isSignup = !_isSignup;
+        _usernameController.clear();
+        _passwordController.clear();
+        _confirmPasswordController.clear();
+        _selectedProfileImage = null;
+      });
+    },
+    style: TextButton.styleFrom(
+      foregroundColor: Colors.grey[400],
+    ),
+    child: Text(
+      _isSignup
+          ? 'Already have an account? Sign in'
+          : "Don't have an account? Create one",
+      style: GoogleFonts.inter(fontSize: 14),
+    ),
+  );
+}
   Widget _buildPasswordField() {
     return Container(
       decoration: BoxDecoration(
@@ -419,83 +440,7 @@ class _PrivateKeyInputScreenState extends State<PrivateKeyInputScreen>
     );
   }
 
-  Widget _buildSubmitButton(AuthState state) {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            accentColor,
-            accentColor.withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: state is! AuthLoading ? _submitForm : null,
-          borderRadius: BorderRadius.circular(16),
-          child: Center(
-            child: state is AuthLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(
-                    _isSignup ? 'Create Account' : 'Sign In',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildToggleButton() {
-    return Center(
-      child: TextButton(
-        onPressed: () {
-          setState(() {
-            _isSignup = !_isSignup;
-            _usernameController.clear();
-            _passwordController.clear();
-            _confirmPasswordController.clear();
-            _selectedProfileImage = null;
-            
-            // Replay animations
-            _animationController.reset();
-            _animationController.forward();
-          });
-        },
-        child: Text(
-          _isSignup
-              ? 'Already have an account? Sign In'
-              : 'Don\'t have an account? Sign Up',
-          style: const TextStyle(
-            color: accentColor,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
   Widget _buildProfileImageSelector() {
     return GestureDetector(
       onTap: _selectProfileImage,
@@ -520,17 +465,227 @@ class _PrivateKeyInputScreenState extends State<PrivateKeyInputScreen>
       ),
     );
   }
+Future<void> _selectProfileImage() async {
+  try {
+    // Request the necessary permissions
+    PermissionStatus cameraStatus = await Permission.camera.request();
+    PermissionStatus storageStatus = await Permission.storage.request();
 
-  Future<void> _selectProfileImage() async {
-    final pickedImage = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedImage != null) {
-      setState(() {
-        _selectedProfileImage = pickedImage ;
-      });
+    if (cameraStatus.isGranted && storageStatus.isGranted) {
+      // Permission granted, proceed with image selection
+      final pickedImage = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70, // Compress image
+        maxWidth: 600,    // Limit image size
+      );
+
+      if (pickedImage != null) {
+        setState(() {
+          _selectedProfileImage = pickedImage;
+        });
+      }
+    } else {
+      // Permission denied, show a dialog to the user
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text(
+            'Permission Required',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'Please enable camera and storage access in your device settings to select a profile picture.',
+            style: TextStyle(color: Colors.grey[400]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Open app settings
+                openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+      );
     }
+  } catch (e) {
+    // Handle any other exceptions
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: const Text(
+          'Error',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'An error occurred while selecting the profile picture: $e',
+          style: TextStyle(color: Colors.grey[400]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
+}
+// Add options to choose between camera and gallery
+Future<void> _showImageSourceDialog() async {
+  await showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF1A1A1A),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined, color: Colors.white),
+            title: const Text(
+              'Choose from Library',
+              style: TextStyle(color: Colors.white),
+            ),
+            onTap: () async {
+              Navigator.pop(context);
+              final pickedImage = await ImagePicker().pickImage(
+                source: ImageSource.gallery,
+                imageQuality: 70,
+                maxWidth: 600,
+              );
+              if (pickedImage != null) {
+                setState(() {
+                  _selectedProfileImage = pickedImage;
+                });
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.camera_alt_outlined, color: Colors.white),
+            title: const Text(
+              'Take a Photo',
+              style: TextStyle(color: Colors.white),
+            ),
+            onTap: () async {
+              Navigator.pop(context);
+              final pickedImage = await ImagePicker().pickImage(
+                source: ImageSource.camera,
+                imageQuality: 70,
+                maxWidth: 600,
+              );
+              if (pickedImage != null) {
+                setState(() {
+                  _selectedProfileImage = pickedImage;
+                });
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    ),
+  );
+}
+
+// Update the profile image picker UI to use the new selection dialog
+Widget _buildProfileImagePicker() {
+  return Column(
+    children: [
+      GestureDetector(
+        onTap: _showImageSourceDialog, // Use new selection dialog
+        child: Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1A),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: _selectedProfileImage != null
+                  ? accentColor
+                  : Colors.grey[800]!,
+              width: 2,
+            ),
+            image: _selectedProfileImage != null
+                ? DecorationImage(
+                    image: FileImage(File(_selectedProfileImage!.path)),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: _selectedProfileImage == null
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add_a_photo_outlined,
+                      color: Colors.grey[400],
+                      size: 32,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Add photo',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                )
+              : null,
+        ),
+      ),
+      if (_selectedProfileImage == null) ...[
+        const SizedBox(height: 8),
+        Text(
+          'Choose a profile photo',
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 14,
+          ),
+        ),
+      ],
+    ],
+  );
+}
+
 
   void _submitForm() async {
+     if (_isSignup && _selectedProfileImage == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            const Text('Please select a profile photo'),
+          ],
+        ),
+        backgroundColor: Colors.red.withOpacity(0.8),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+    return;
+  }
+
     if (_formKey.currentState!.validate()) {
       final authCubit = context.read<AuthCubit>();
 Uint8List profileImage = await File(_selectedProfileImage!.path).readAsBytes(); // For mobile or other platforms  
