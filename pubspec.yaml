@@ -36,19 +36,18 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_app_name: ^0.1.1
   flutter_launcher_icons: ^0.11.0
-  flutter_native_splash: ^2.0.0	
 
 flutter_app_name:
   name: "Poets Loom"
 
 flutter:
   uses-material-design: true
+  assets:
+    - "assets/"
+    - "assets/icon.png"
 
 flutter_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assests/icon.png"
 
-flutter_native_splash:
-  color: "#0c031f"
-  image: "assests/icon.png"
