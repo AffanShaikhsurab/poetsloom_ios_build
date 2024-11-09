@@ -8,7 +8,6 @@ import 'package:test_app/model.dart';
 
 
 
-import 'package:test_app/profile_screen.dart';
 import 'package:test_app/model.dart';
 import 'package:test_app/widget/poem_card.dart';
 class PoemSearchDelegate extends SearchDelegate<Poem?> {

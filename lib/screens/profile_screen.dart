@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:test_app/authservice.dart';
+import 'package:test_app/authservice.dart' as auth;
+import 'package:test_app/create_poem.dart';
 import 'package:test_app/screens/fav_poems.dart';
 import 'package:test_app/screens/my_poems.dart';
 import 'dart:math' as math;
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 import 'package:test_app/screens/private_key.dart';
+import 'package:test_app/screens/edit.dart';
+import 'package:test_app/state/edit_state.dart';
 class User {
   final String id;
   final String username;
@@ -389,7 +396,23 @@ Widget _buildProfileSection() {
                             IconButton(
                               onPressed: () {
                                 HapticFeedback.mediumImpact();
-                                // Add edit profile functionality
+                               Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => BlocProvider(
+      create: (_) => ProfileEditCubit(),
+      child: ProfileEditScreen(currentUser: auth.User(
+        id: userData!.username ,
+        username: userData!.username ,
+        author_name : userData!.author_name ,
+        profile: userData!.profile!
+      ),
+      
+      )),
+    ),
+  );
+                           
+          
                               },
                               icon: Icon(
                                 Icons.edit_outlined,
@@ -418,7 +441,7 @@ Widget _buildProfileSection() {
                 children: [
                   // Author name
                   Text(
-                    userData!.username,
+                    userData!.author_name,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -447,7 +470,9 @@ Widget _buildProfileSection() {
                         label: 'Write',
                         onTap: () {
                           HapticFeedback.mediumImpact();
-                          // Add write functionality
+                         Navigator.push(context , 
+                         MaterialPageRoute(builder: (context) => const CreatePoemScreen())
+                         );
                         },
                       ),
                       const SizedBox(width: 16),
@@ -456,7 +481,7 @@ Widget _buildProfileSection() {
                         label: 'Share',
                         onTap: () {
                           HapticFeedback.mediumImpact();
-                          // Add share functionality
+    _shareProfile();
                         },
                       ),
                     ],
@@ -469,7 +494,168 @@ Widget _buildProfileSection() {
       ],
     );
   }
+Future<void> _shareProfile() async {
+  try {
+    // Create a formatted share text
+    final shareText = '''
+🎭 Check out ${userData!.author_name}'s Poetry Profile!
 
+📝 Total Poems: $totalPoems
+👥 Followers: $user_followers
+✨ Following: $user_following
+
+@${userData!.username}
+Join us in celebrating the art of poetry!
+    ''';
+
+    // Show a custom share bottom sheet
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildShareBottomSheet(shareText),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to share profile: ${e.toString()}'),
+        backgroundColor: Colors.red.withOpacity(0.8),
+      ),
+    );
+  }
+}
+
+Widget _buildShareBottomSheet(String shareText) {
+  return Container(
+    padding: const EdgeInsets.all(24),
+    decoration: BoxDecoration(
+      color: cardColor,
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(20),
+      ),
+      border: Border.all(
+        color: Colors.white.withOpacity(0.1),
+      ),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 40,
+          height: 4,
+          margin: const EdgeInsets.only(bottom: 24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        Text(
+          'Share Profile',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white.withOpacity(0.9),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildShareOption(
+              icon: Icons.share_rounded,
+              label: 'General',
+              onTap: () async {
+                Navigator.pop(context);
+                await Share.share(shareText);
+              },
+            ),
+            _buildShareOption(
+              icon: Icons.message_rounded,
+              label: 'Message',
+              onTap: () async {
+                Navigator.pop(context);
+                final uri = Uri.parse('sms:?body=${Uri.encodeComponent(shareText)}');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+            _buildShareOption(
+              icon: Icons.email_rounded,
+              label: 'Email',
+              onTap: () async {
+                Navigator.pop(context);
+                final uri = Uri.parse('mailto:?subject=Check out this poetry profile&body=${Uri.encodeComponent(shareText)}');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+            _buildShareOption(
+              icon: Icons.copy_rounded,
+              label: 'Copy',
+              onTap: () async {
+                Navigator.pop(context);
+                await Clipboard.setData(ClipboardData(text: shareText));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Profile info copied to clipboard'),
+                      backgroundColor: accentColor.withOpacity(0.8),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
+    ),
+  );
+}
+
+Widget _buildShareOption({
+  required IconData icon,
+  required String label,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: () {
+      HapticFeedback.mediumImpact();
+      onTap();
+    },
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: accentColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: accentColor.withOpacity(0.3),
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: accentColor,
+            size: 24,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildProfilePicture() {
     return TweenAnimationBuilder<double>(
       duration: const Duration(milliseconds: 1500),
@@ -639,11 +825,7 @@ Widget _buildProfileSection() {
         'title': 'Favorites',
         'route': FavoritePoemsScreen(),
       },
-      {
-        'icon': Icons.settings_rounded,
-        'title': 'Settings',
-        'route': const AuthorPoemsScreen(),
-      },
+ 
         {
       'icon': Icons.vpn_key_rounded, // Add this item
       'title': 'Private Key',
