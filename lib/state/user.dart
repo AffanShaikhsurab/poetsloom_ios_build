@@ -43,7 +43,8 @@ class AddPoemCubit extends Cubit<AddPoemState> {
   Future<void> addPoem({
     required String title,
     required String content,
-    required List<String> tags
+    required List<String> tags,
+    required String privateKey
   }) async {
     emit(AddPoemLoading());
 
@@ -57,7 +58,7 @@ class AddPoemCubit extends Cubit<AddPoemState> {
       final transactionHash = await _poetsLoomService.addPoem(
         title,
         contentHash! ,
-        authorName!,
+        authorName!, privateKey
       );
       emit(AddPoemSuccess(transactionHash));
     } catch (e) {
@@ -100,11 +101,11 @@ class WithdrawCubit extends Cubit<WithdrawState> {
 
   WithdrawCubit(this._poetsLoomService) : super(WithdrawInitial());
 
-  Future<void> withdrawRewards() async {
+  Future<void> withdrawRewards(String privateKey) async {
     emit(WithdrawLoading());
 
     try {
-      final transactionHash = await _poetsLoomService.withdrawAmount();
+      final transactionHash = await _poetsLoomService.withdrawAmount(privateKey);
       emit(WithdrawSuccess(transactionHash));
     } catch (e) {
       emit(WithdrawFailure(e.toString()));

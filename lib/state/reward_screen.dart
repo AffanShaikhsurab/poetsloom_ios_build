@@ -1,7 +1,9 @@
 // rewards_state.dart
 import 'package:equatable/equatable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:test_app/component/wallet_manager.dart';
 import 'package:test_app/state/rewards.dart';
+import 'package:test_app/utils/app_colors.dart';
 import 'package:web3dart/web3dart.dart';
 // rewards_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,179 +20,413 @@ class RewardsScreen extends StatefulWidget {
 }
 
 class _RewardsScreenState extends State<RewardsScreen> {
-  @override
-  void initState() {
-    super.initState();
-    context.read<RewardsCubit>().loadAllRewardsData();
-  }
-
-  String _formatEther(BigInt wei) {
-    final ether = EtherAmount.fromBigInt(EtherUnit.wei, wei)
-        .getValueInUnit(EtherUnit.ether);
-    return ether.toStringAsFixed(6);
-  }
-
-  Widget _buildUnclaimedBalanceCard(RewardsData state) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).primaryColor.withOpacity(0.1),
-              Theme.of(context).primaryColor.withOpacity(0.05),
+    static const backgroundColor = Color(0xFF000000);
+  static const surfaceColor = Color(0xFF121212);
+  static const cardColor = Color(0xFF1E1E1E);
+  static const accentColor = Color(0xFF6C63FF);
+  Future<void> _showPrivateKeyPrompt() {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Theme(
+        data: ThemeData.dark().copyWith(
+          dialogBackgroundColor: AppColors.cardColor,
+        ),
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.key_rounded,
+                  color: Colors.amber,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Private Key Required',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'To view and manage your rewards, you need to provide your private key.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      final result = await showPrivateKeyDialog(context);
+                      if (result != null && mounted) {
+                        context.read<RewardsCubit>().loadAllRewardsData();
+                      }
+                    },
+                    style: AppColors.getAccentButtonStyle(),
+                    child: const Text('Add Private Key'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.account_balance_wallet,
-                  color: Theme.of(context).primaryColor,
+      ),
+    );
+  }
+Future<String?> showPrivateKeyDialog(BuildContext context) {
+  final controller = TextEditingController();
+  bool obscureText = true;
+
+  return showDialog<String>(
+    context: context,
+    builder: (context) => Theme(
+      data: ThemeData.dark().copyWith(
+        dialogBackgroundColor: cardColor,
+      ),
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        contentPadding: const EdgeInsets.all(24),
+        content: StatefulBuilder(
+          builder: (context, setState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.key_rounded,
+                      color: accentColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Text(
+                      'Private Key Required',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'A private key is required to publish poems. This will be stored securely on your device.',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  height: 1.5,
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Unclaimed Balance',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
+              ),
+              const SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  color: surfaceColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: accentColor.withOpacity(0.3),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '${_formatEther(state.unclaimedBalance)} ETH',
-              style: TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: state.unclaimedBalance > BigInt.zero && !state.isWithdrawing
-                    ? () => context.read<RewardsCubit>().withdrawBalance()
-                    : null,
-                icon: state.isWithdrawing
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.download),
-                label: Text(
-                  state.isWithdrawing ? 'Withdrawing...' : 'Withdraw Balance',
+                child: TextField(
+                  controller: controller,
+                  obscureText: obscureText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Lora',
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Enter your private key',
+                    hintStyle: TextStyle(
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureText
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                      onPressed: () {
+                        setState(() => obscureText = !obscureText);
+                      },
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          accentColor,
+                          accentColor.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          final key = controller.text.trim();
+                          if (key.isNotEmpty) {
+                            await WalletManager.savePrivateKey(key);
+                            Navigator.pop(context, key);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          child: const Text(
+                            'Continue',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildUnclaimedBalanceCard(RewardsData state) {
+    return Container(
+      decoration: AppColors.getAccentCardDecoration(),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accentColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: AppColors.accentColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Available Balance',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '${(state.unclaimedBalance)} ETH',
+            style: TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: AppColors.accentColor,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: state.isWithdrawing
+                ? Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(AppColors.accentColor),
+                    ),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: state.unclaimedBalance > BigInt.zero
+                        ? () async {
+                            final hasKey = await WalletManager.hasPrivateKey();
+                            if (!hasKey) {
+                              if (!mounted) return;
+                              await _showPrivateKeyPrompt();
+                              return;
+                            }
+                            if (!mounted) return;
+                            context.read<RewardsCubit>().withdrawBalance();
+                          }
+                        : null,
+                    style: AppColors.getAccentButtonStyle(),
+                    icon: const Icon(Icons.download_rounded),
+                    label: const Text(
+                      'Withdraw Balance',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildTransactionHistoryCard(RewardsData state) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.history,
-                  color: Theme.of(context).primaryColor,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Transaction History',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Total Earnings: ${state.totalTransactions.toStringAsFixed(6)} ETH',
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).primaryColor,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            if (state.transactionHistory.isNotEmpty) ...[
-              const SizedBox(height: 16),
+    return Container(
+      decoration: AppColors.getCardDecoration(),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
               Container(
-                constraints: const BoxConstraints(maxHeight: 300),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: state.transactionHistory.length,
-                  separatorBuilder: (context, index) => const Divider(),
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                        child: Icon(
-                          Icons.add_circle_outline,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                      title: Text(
-                        'Reward Payment',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Transaction ${state.transactionHistory.length - index}',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${state.transactionHistory[index].toStringAsFixed(6)} ETH',
-                            style: TextStyle(
-                              color: Theme.of(context).primaryColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accentColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.history_rounded,
+                  color: AppColors.accentColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Transaction History',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Total Earnings: ${state.totalTransactions.toStringAsFixed(6)} ETH',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppColors.accentColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (state.transactionHistory.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: state.transactionHistory.length,
+                separatorBuilder: (context, index) => Divider(
+                  color: AppColors.borderColor,
+                ),
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.accentColor.withOpacity(0.1),
+                      child: Icon(
+                        Icons.add_circle_outline,
+                        color: AppColors.accentColor,
+                      ),
+                    ),
+                    title: Text(
+                      'Reward Payment',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Transaction ${state.transactionHistory.length - index}',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    trailing: Text(
+                      '${state.transactionHistory[index].toStringAsFixed(6)} ETH',
+                      style: TextStyle(
+                        color: AppColors.accentColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

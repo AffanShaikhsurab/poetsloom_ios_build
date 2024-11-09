@@ -90,9 +90,40 @@ class _PrivateKeyInputScreenState extends State<PrivateKeyInputScreen>
       ),
       child: Scaffold(
         body: BlocConsumer<AuthCubit, AuthState>(
-          listener: (context, state) async {
-            // ... existing listener code ...
-          },
+             listener: (context, state) async {
+          // Handle different authentication states
+          if (state is AuthAuthenticated) {
+            if (_isSignup) {
+              final _prefs = await SharedPreferences.getInstance();
+              final key = _prefs.getString('key');
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => MnemonicGenerationScreen(
+                  encryptionKey: key!,
+                  onComplete: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => HomeScreen()),
+                    );
+                  },
+                )),
+              );
+            } else {
+              // Navigate to home screen on successful authentication
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => HomeScreen()),
+              );
+            }
+          } else if (state is AuthError) {
+            // Show error in a snackbar
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.errorMessage),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        },
           builder: (context, state) {
             return Stack(
               children: [

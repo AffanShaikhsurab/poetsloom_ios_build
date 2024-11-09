@@ -313,13 +313,13 @@ Future<void> addFollower(Poem poem) async {
   }
 
 
-  Future<void> rewardPoem(Poem poem, BigInt amount) async {
+  Future<void> rewardPoem(Poem poem, BigInt amount , String privateKey) async {
     try {
       await _poetsLoomService.rewardPoem(
         BigInt.from(int.parse(poem.id)),
         amount,poem.authorId
         ,poem.poemHash
-        ,poem.rewards + 1
+        ,poem.rewards + 1 , privateKey
       );
       
       final updatedPoem = poem.copyWith(rewards: poem.rewards + 1);
