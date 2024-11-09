@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: v1  # Specify the branch to check out
+          ref: v2  # Specify the branch to check out as v2
 
       - uses: subosito/flutter-action@v2
         with:
