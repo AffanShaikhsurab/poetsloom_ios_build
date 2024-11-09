@@ -113,7 +113,7 @@ class Poem {
 }
 
 // models/user.dart
-class User {
+class UserInfo {
   final String id;
   final String username;
   final String email;
@@ -123,7 +123,7 @@ class User {
   int totalPoems;
   int totalRewards;
 
-  User({
+  UserInfo({
     required this.id,
     required this.username,
     required this.email,
@@ -134,8 +134,8 @@ class User {
     required this.totalRewards,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
+  factory UserInfo.fromJson(Map<String, dynamic> json) {
+    return UserInfo(
       id: json['id'],
       username: json['username'],
       email: json['email'],
@@ -160,7 +160,7 @@ class User {
     };
   }
 
-  User copyWith({
+  UserInfo copyWith({
     String? id,
     String? username,
     String? email,
@@ -170,7 +170,7 @@ class User {
     int? totalPoems,
     int? totalRewards,
   }) {
-    return User(
+    return UserInfo(
       id: id ?? this.id,
       username: username ?? this.username,
       email: email ?? this.email,

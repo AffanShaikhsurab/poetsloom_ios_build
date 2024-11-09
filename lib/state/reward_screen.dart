@@ -2,6 +2,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test_app/component/wallet_manager.dart';
+import 'package:test_app/screens/private_key.dart';
 import 'package:test_app/state/rewards.dart';
 import 'package:test_app/utils/app_colors.dart';
 import 'package:web3dart/web3dart.dart';
@@ -488,6 +489,191 @@ Future<String?> showPrivateKeyDialog(BuildContext context) {
       ),
     );
   }
+Widget _buildNoPrivateKeyState() {
+  return Container(
+    padding: const EdgeInsets.all(24),
+    decoration: BoxDecoration(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: Colors.amber.withOpacity(0.3),
+      ),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Icon with animated glow
+        TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 1500),
+          tween: Tween(begin: 0.0, end: 1.0),
+          builder: (context, value, child) {
+            return Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amber.withOpacity(0.2 * value),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.key_rounded,
+                size: 48,
+                color: Colors.amber.withOpacity(0.7 + (0.3 * value)),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Private Key Required',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'To view and manage your rewards, you need to set up your private key first.',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 16,
+            height: 1.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 32),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'How to Add Your Private Key:',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildStepItem(
+                number: 1,
+                text: 'Go to Profile tab',
+                icon: Icons.person_outline_rounded,
+              ),
+              _buildStepItem(
+                number: 2,
+                text: 'Open Settings',
+                icon: Icons.settings_rounded,
+              ),
+              _buildStepItem(
+                number: 3,
+                text: 'Select Private Key Management',
+                icon: Icons.vpn_key_rounded,
+              ),
+              _buildStepItem(
+                number: 4,
+                text: 'Add your private key securely',
+                icon: Icons.security_rounded,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+        ElevatedButton.icon(
+          onPressed: () {
+            // Navigate directly to private key management
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PrivateKeyManagementScreen(),
+              ),
+            ).then((_) {
+              // Refresh rewards data when returning
+              context.read<RewardsCubit>().loadAllRewardsData();
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: accentColor,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 16,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          icon: const Icon(Icons.vpn_key_rounded),
+          label: const Text(
+            'Add Private Key Now',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildStepItem({
+  required int number,
+  required String text,
+  required IconData icon,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: accentColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              number.toString(),
+              style: TextStyle(
+                color: accentColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Icon(
+          icon,
+          size: 20,
+          color: accentColor.withOpacity(0.7),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          text,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 14,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
@@ -497,25 +683,42 @@ Future<void> _logout() async {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Rewards'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => context.read<RewardsCubit>().loadAllRewardsData(),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: BlocBuilder<RewardsCubit, RewardsState>(
-            builder: (context, state) {
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('My Rewards'),
+      centerTitle: true,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.logout),
+          onPressed: _logout,
+        ),
+      ],
+    ),
+    body: FutureBuilder<bool>(
+      future: WalletManager.hasPrivateKey(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final hasKey = snapshot.data ?? false;
+        if (!hasKey) {
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: _buildNoPrivateKeyState(),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () => context.read<RewardsCubit>().loadAllRewardsData(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: BlocBuilder<RewardsCubit, RewardsState>(
+              builder: (context, state) {
+         
               if (state is RewardsLoading) {
                 return SizedBox(
                   height: MediaQuery.of(context).size.height - 100,
@@ -565,9 +768,13 @@ Future<void> _logout() async {
               
               return const SizedBox.shrink();
             },
+      
           ),
-        ),
-      ),
+        )
+      
+      );
+      }
+    ),
     );
   }
 }
